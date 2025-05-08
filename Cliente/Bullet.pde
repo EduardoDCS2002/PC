@@ -9,7 +9,7 @@ class Bullet {
     this.y = y;
   }
 
-  // Método para desenhar o planeta
+  // Método para desenhar a bala
   void display(PApplet appc) {
     
     appc.fill(0,0,0);

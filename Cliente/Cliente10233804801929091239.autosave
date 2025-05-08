@@ -9,8 +9,8 @@ GTextArea server_connection_label; // log
 GLabel titulo_label; // titulo
 
 // botoes no momemto do login_manager
-GButton registar_button; 
-GButton cancelar_button; 
+GButton registar_button;
+GButton cancelar_button;
 GButton login_button;
 GButton jogo_pontos_button;
 
@@ -68,7 +68,7 @@ public void setup() {
   menu();
 }
 
-public void close_jogo (GWindow window){
+public void close_jogo (GWindow window) {
   estadoJogo = false;
   con.write("quit");
   getSurface().setVisible(true);
@@ -83,27 +83,27 @@ public void fecha_ranking_window(GWindow window) {
 
 void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
 
-angle = atan2(appc.mouseY - rectY, appc.mouseX - rectX);
- if (appc.keyPressed) {
-   String command = "";
-   if(appc.keyCode == LEFT || appc.key == "a"){
-     command = "L\n";
-   }
-   if(appc.keyCode == UP || appc.key == "w"){
-     command = "U\n";
-   }
-   if(appc.keyCode == RIGHT || appc.key == "d"){
-     command = "R\n";
-   }
-   if(appc.keyCode == DOWN || appc.key == "s"){
-     command = "D\n";
-   }
+  angle = atan2(appc.mouseY - rectY, appc.mouseX - rectX);
+  if (appc.keyPressed) {
+    String command = "";
+    if (appc.keyCode == LEFT || appc.key == "a") {
+      command = "L\n";
+    }
+    if (appc.keyCode == UP || appc.key == "w") {
+      command = "U\n";
+    }
+    if (appc.keyCode == RIGHT || appc.key == "d") {
+      command = "R\n";
+    }
+    if (appc.keyCode == DOWN || appc.key == "s") {
+      command = "D\n";
+    }
 
-   
-   if(command != ""){
-     println(command);
-     con.write(command);
-   }
+
+    if (command != "") {
+      println(command);
+      con.write(command);
+    }
   }
 }
 
@@ -116,10 +116,10 @@ public void draw() {
 }
 
 public void menu() {
-   //ipLido = "192.168.1.69";
-   ipLido = "localhost";
-   portaLida = "22346"; 
-   boolean ok = con.connect(ipLido, Integer.parseInt(portaLida));  
+  //ipLido = "192.168.1.69";
+  ipLido = "localhost";
+  portaLida = "22346";
+  boolean ok = con.connect(ipLido, Integer.parseInt(portaLida));
 
   this.noLoop();
   G4P.messagesEnabled(false);
@@ -143,12 +143,12 @@ public void menu() {
   titulo_label.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
   titulo_label.setText("Gravidade");
   titulo_label.setOpaque(false);
-  
+
   titulo_label = new GLabel(this, 300, 60, 700, 120);
   titulo_label.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
   titulo_label.setText("Bem-vindo ao Jogo da Gravidade! Tens a opção de registo, login e de cancelar um registo. Quando realizares o login, irás ser colocado no lobby então espere alguns segundos até a partida começar");
   titulo_label.setOpaque(false);
-  
+
   int buttonWidth = 300;
   int buttonHeight = 110;
   int centerX = width/2 - buttonWidth/2;
@@ -162,13 +162,13 @@ public void menu() {
   registar_button.setText("Registar");
   registar_button.setLocalColorScheme(5);
   registar_button.addEventHandler(this, "registar_button_click");
-  
+
   cancelar_button = new GButton(this, centerX, 570, buttonWidth, buttonHeight);
   cancelar_button.setText("Cancelar");
   cancelar_button.setLocalColorScheme(4);
   cancelar_button.addEventHandler(this, "cancelar_button_click");
 
-  jogo_pontos_button = new GButton(this,width-250, 20, buttonWidth - 60, buttonHeight); 
+  jogo_pontos_button = new GButton(this, width-250, 20, buttonWidth - 60, buttonHeight);
   jogo_pontos_button.setText("Rankings"); // Define o texto do botão
   jogo_pontos_button.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
   jogo_pontos_button.setLocalColorScheme(6);
@@ -181,31 +181,31 @@ public void menu() {
 synchronized public void registo_window_draw(PApplet appc, GWinData data) { //_CODE_:registo_window:453092:
   appc.background(50);
   appc.fill(0);
-} 
+}
 
 public void server_connection_label_change(GTextArea source, GEvent event) { //_CODE_:server_connection_label:697017:
   println("server_connection_label - GTextArea >> GEvent." + event + " @ " + millis());
-} 
- 
+}
+
 
 public void registar_button_click(GButton source, GEvent event) { //_CODE_:registar_button:703554:
   println("registar_button - GButton >> GEvent." + event + " @ " + millis());
   registar();
   getSurface().setVisible(false);
-} 
+}
 
 
 public void cancelar_button_click(GButton source, GEvent event) { //_CODE_:cancelar_button:610057:
   println("cancelar_button - GButton >> GEvent." + event + " @ " + millis());
   cancelar();
   getSurface().setVisible(false);
-} 
+}
 
 public void login_button_click(GButton source, GEvent event) { //_CODE_:login_button:963696:
   println("login_button - GButton >> GEvent." + event + " @ " + millis());
   login();
   getSurface().setVisible(false);
-} 
+}
 //#endregion
 
 
@@ -244,12 +244,12 @@ public void registar() {
   registo_window.loop();
 }
 
-public void nome_change(GTextField source, GEvent event) { 
+public void nome_change(GTextField source, GEvent event) {
   println("Nome :" + nome.getText());
   lastNome = nome.getText();
-} 
+}
 
-public void concluir_registo_button_click(GButton source, GEvent event) { 
+public void concluir_registo_button_click(GButton source, GEvent event) {
 
   println("concluir_registo_button - GButton >> GEvent." + event + " @ " + millis());
   getSurface().setVisible(true);
@@ -258,34 +258,34 @@ public void concluir_registo_button_click(GButton source, GEvent event) {
   lastNome = "";
   lastPassword = "";
   String res = "";
-    try {
-       while (res.equals("")){
-         Thread.sleep(300);
-         res = con.read();
-         println("resposta do server" + res);
-         server_connection_label.appendText(res);
-       }
+  try {
+    while (res.equals("")) {
+      Thread.sleep(300);
+      res = con.read();
+      println("resposta do server" + res);
+      server_connection_label.appendText(res);
     }
-    catch(Exception e) {
-    }
-      
+  }
+  catch(Exception e) {
+  }
+
   println("resposta do server" + res);
   server_connection_label.appendText(res);
-} 
+}
 
 
-public void password_change(GPassword source, GEvent event) { 
+public void password_change(GPassword source, GEvent event) {
   println("Password : " + password.getPassword());
   lastPassword = password.getPassword();
-} 
+}
 
-public void close_registo_window (GWindow window) { 
+public void close_registo_window (GWindow window) {
   getSurface().setVisible(true);
   registo_window.setVisible(false);
-} 
+}
 
 public void login() {
-  
+
   registo_window = GWindow.getWindow(this, "Jogo Login", 600, 100, 500, 500, JAVA2D);
   registo_window.noLoop();
   registo_window.setActionOnClose(G4P.CLOSE_WINDOW);
@@ -313,16 +313,16 @@ public void login() {
   password.setMaxWordLength(20);
   password.setOpaque(true);
   password.addEventHandler(this, "password_change");
-  
+
   registo_window.addOnCloseHandler(this, "close_login_window");
 
   registo_window.loop();
 }
 
-public void close_login_window (GWindow window) { 
+public void close_login_window (GWindow window) {
   getSurface().setVisible(true);
   registo_window.setVisible(false);
-} 
+}
 
 public void criaJogoWindow() {
   jogo_window = null;
@@ -334,31 +334,29 @@ public void criaJogoWindow() {
   jogo_window.addDrawHandler(this, "drawJogo");
   jogo_window.addOnCloseHandler(this, "close_jogo");
   jogo_window.setVisible(false);
-  
 }
 
-public void concluir_login_button_click(GButton source, GEvent event) { 
+public void concluir_login_button_click(GButton source, GEvent event) {
 
   getSurface().setVisible(true);
   registo_window.setVisible(false);
   con.write("login " + lastNome + " " + lastPassword);
   String res = "";
- 
-    try {
-       while (res.equals("")){
-         Thread.sleep(300);
-         res = con.read();
-         println("resposta do server" + res);
-         server_connection_label.appendText(res);
-       }
+
+  try {
+    while (res.equals("")) {
+      Thread.sleep(300);
+      res = con.read();
+      println("resposta do server" + res);
+      server_connection_label.appendText(res);
     }
-    catch(Exception e) {
-      
-    }
-        
+  }
+  catch(Exception e) {
+  }
+
   Runnable r = new Runnable() {
     public void run() {
-      try {        
+      try {
         while (!con.read().equals("Comeca")) {
           Thread.sleep(300);
         }
@@ -383,9 +381,7 @@ public void concluir_login_button_click(GButton source, GEvent event) {
             perdeu_label.setText("PERDEU");
             jogo_pontos_button.setVisible(true);
             estadoJogo = false;
-            
-          } 
-          else if (estadoLido.equals("Venceu") ) {
+          } else if (estadoLido.equals("Venceu") ) {
             perdeu_label = new GLabel(jogo_window, 0, 100, 1300, 400);
             perdeu_label.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
             perdeu_label.setFont(new Font("Arial", Font.PLAIN, 40));
@@ -395,16 +391,12 @@ public void concluir_login_button_click(GButton source, GEvent event) {
             jogo_pontos_button.setVisible(true);
             println("Visivel");
             estadoJogo = false;
-            
-          }       
-          else {
+          } else {
             if (!estadoLido.equals(""))
             {
               updateJogo(estadoLido);
             }
-            
           }
-         
         }
       }
       catch(Exception e ) {
@@ -414,90 +406,90 @@ public void concluir_login_button_click(GButton source, GEvent event) {
 
   thread = new Thread(r);
   thread.start();
-} 
+}
 
-synchronized public void drawJogo(PApplet appc, GWinData data) { 
+synchronized public void drawJogo(PApplet appc, GWinData data) {
 
-  try 
-   {
-      appc.background(0);
-      appc.imageMode(CORNER);
-      appc.fill(0);
-      estadoJogo = true;
-      if (estadoJogo) {
-        
-        jogo.draw(appc);
-     }
-   }
-   catch (Exception e){
-     
-   }
+  try
+  {
+    appc.background(0);
+    appc.imageMode(CORNER);
+    appc.fill(0);
+    estadoJogo = true;
+    if (estadoJogo) {
+
+      jogo.draw(appc);
+    }
   }
+  catch (Exception e) {
+  }
+}
 
 public void drawRanking(PApplet appc, GWinData data) {
-    if (apresentarPontos) {
-        List<Player> players = loadPlayersFromLoginsFile();
-        players.sort(Comparator.comparingInt(Player::getLevel)
-                .thenComparingInt(p -> p.getVictories() - p.getDefeats())
-                .reversed()); // Ordena os jogadores por nível e depois pela última série de vitórias/derrotas
+  if (apresentarPontos) {
+    List<Player> players = loadPlayersFromLoginsFile();
+    players.sort(Comparator.comparingInt(Player::getLevel)
+      .thenComparingInt(p -> p.getVictories() - p.getDefeats())
+      .reversed()); // Ordena os jogadores por nível e depois pela última série de vitórias/derrotas
 
-        StringBuilder sb = new StringBuilder();
-        int count = 0;
-        for (Player player : players) {
-            if (count >= 10) break; // Limita a exibição aos 10 melhores jogadores
-            sb.append(player.getUsername())
-              .append(" : Nível ")
-              .append(player.getLevel())
-              .append("\n");
-            count++;
-        }
-
-        // Limpa a janela antes de desenhar
-        appc.background(255);
-        appc.fill(0);
-        appc.textSize(17); // Aumente este valor conforme necessário
-        appc.text(sb.toString(), 150, 50); // Desenhe o texto na posição (150, 50)
+    StringBuilder sb = new StringBuilder();
+    int count = 0;
+    for (Player player : players) {
+      if (count >= 10) break; // Limita a exibição aos 10 melhores jogadores
+      sb.append(player.getUsername())
+        .append(" : Nível ")
+        .append(player.getLevel())
+        .append("\n");
+      count++;
     }
+
+    // Limpa a janela antes de desenhar
+    appc.background(255);
+    appc.fill(0);
+    appc.textSize(17); // Aumente este valor conforme necessário
+    appc.text(sb.toString(), 150, 50); // Desenhe o texto na posição (150, 50)
+  }
 }
 
 private List<Player> loadPlayersFromLoginsFile() {
-    List<Player> players = new ArrayList<>();
-    String filePath = "C:/Users/paulo/OneDrive/Ambiente de Trabalho/PC/Projeto/PC - Projecto - Grupo 13/Servidor/Logins.txt";
+  List<Player> players = new ArrayList<>();
+  String filePath = "C:/Users/paulo/OneDrive/Ambiente de Trabalho/PC/Projeto/PC - Projecto - Grupo 13/Servidor/Logins.txt";
 
-    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-        String line;
-        while ((line = br.readLine()) != null) {
-            // Extrair username e level de cada linha do arquivo
-            String parts = line.replace("{", "").replace("}", "").replace(".", "");
-            String[] parts2 = parts.replace("\"", "").split(",");
+  try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+    String line;
+    while ((line = br.readLine()) != null) {
+      // Extrair username e level de cada linha do arquivo
+      String parts = line.replace("{", "").replace("}", "").replace(".", "");
+      String[] parts2 = parts.replace("\"", "").split(",");
 
-            String username = parts2[0];
-            int victories = Integer.parseInt(parts2[3]);
-            int defeats = Integer.parseInt(parts2[4]);
-            int level = Integer.parseInt(parts2[5]);
+      String username = parts2[0];
+      int victories = Integer.parseInt(parts2[3]);
+      int defeats = Integer.parseInt(parts2[4]);
+      int level = Integer.parseInt(parts2[5]);
 
-            Player player = new Player(username, victories, defeats, level);
-            players.add(player);
-        }
-    } catch (IOException e) {
-        e.printStackTrace();
+      Player player = new Player(username, victories, defeats, level);
+      players.add(player);
     }
-    return players;
+  }
+  catch (IOException e) {
+    e.printStackTrace();
+  }
+  return players;
 }
 
 public void jogo_pontos_button_click(GButton source, GEvent event) {
-    pontos_Window = GWindow.getWindow(this, "Rankings", 1150, 100, 400, 400, JAVA2D);
-    pontos_Window.setActionOnClose(G4P.CLOSE_WINDOW);
-    pontos_Window.addDrawHandler(this, "drawRanking");
-    pontos_Window.addOnCloseHandler(this, "fecha_ranking_window");
-    scoresA = new GLabel(pontos_Window, 35, 0, 200, 100, "");
-    scoresA.setTextAlign(GAlign.CENTER, GAlign.TOP);
-    scoresA.setLocalColorScheme(GCScheme.RED_SCHEME);
-    scoresA.setOpaque(false);
-    scoresA.setFont(font);
+  pontos_Window = GWindow.getWindow(this, "Rankings", 1150, 100, 400, 400, JAVA2D);
+  pontos_Window.setActionOnClose(G4P.CLOSE_WINDOW);
+  pontos_Window.addDrawHandler(this, "drawRanking");
+  pontos_Window.addOnCloseHandler(this, "fecha_ranking_window");
+  scoresA = new GLabel(pontos_Window, 35, 0, 200, 100, "");
+  scoresA.setTextAlign(GAlign.CENTER, GAlign.TOP);
+  scoresA.setLocalColorScheme(GCScheme.RED_SCHEME);
+  scoresA.setOpaque(false);
+  scoresA.setFont(font);
 
-    apresentarPontos = true;
-    threadMorreu = true;
+  apresentarPontos = true;
+  threadMorreu = true;
 }
 
 
@@ -536,90 +528,89 @@ public void cancelar() {
   registo_window.loop();
 }
 
-public void close_cancelar_window (GWindow window) { 
+public void close_cancelar_window (GWindow window) {
   getSurface().setVisible(true);
   registo_window.setVisible(false);
-} 
+}
 
 
-public void concluir_cancelar_button_click(GButton source, GEvent event) { 
+public void concluir_cancelar_button_click(GButton source, GEvent event) {
 
   getSurface().setVisible(true);
   registo_window.setVisible(false);
   con.write("close_account " + lastNome + " " + lastPassword);
   String res = "";
-    try {
-       while (res.equals("")){
-         Thread.sleep(300);
-         res = con.read();
-         println("resposta do server" + res);
-         server_connection_label.appendText(res);
-       }
+  try {
+    while (res.equals("")) {
+      Thread.sleep(300);
+      res = con.read();
+      println("resposta do server" + res);
+      server_connection_label.appendText(res);
     }
-    catch(Exception e) {
-    }
-} 
+  }
+  catch(Exception e) {
+  }
+}
 
 public synchronized void updateJogo(String res) {
 
   try {
-   
-  StringTokenizer stk = new StringTokenizer(res, " ");
 
-  if (stk.nextToken().equals("Pontos")) {
-    MelhoresPontuacoes.clear();
-    //println("Estou a ler pontos");
-    int numJogadores = new Integer(stk.nextToken()).intValue();
-    //println("Estou a ler pontos numjogadores" + numJogadores);
-    for (int i = 0; i < numJogadores; i++) {
-      String nome = new String(stk.nextToken());
-      //println("Estou a ler pontos nome" + nome);
-      int pontuacao = new Integer(stk.nextToken()).intValue();
-      //println("Estou a ler pontos pontuacao" + pontuacao);
-      MelhoresPontuacoes.put(nome, pontuacao);
-      println(MelhoresPontuacoes.toString());
+    StringTokenizer stk = new StringTokenizer(res, " ");
+
+    if (stk.nextToken().equals("Pontos")) {
+      MelhoresPontuacoes.clear();
+      //println("Estou a ler pontos");
+      int numJogadores = new Integer(stk.nextToken()).intValue();
+      //println("Estou a ler pontos numjogadores" + numJogadores);
+      for (int i = 0; i < numJogadores; i++) {
+        String nome = new String(stk.nextToken());
+        //println("Estou a ler pontos nome" + nome);
+        int pontuacao = new Integer(stk.nextToken()).intValue();
+        //println("Estou a ler pontos pontuacao" + pontuacao);
+        MelhoresPontuacoes.put(nome, pontuacao);
+        println(MelhoresPontuacoes.toString());
+      }
+
+      pontos_Window.setVisible(true);
+    } else {
+
+      int numJogadores = new Integer(stk.nextToken()).intValue();
+
+      ArrayList<Astronaut> jogadores = new ArrayList<Astronaut>();
+      HashMap<String, Integer> pontos = new HashMap<String, Integer>();
+
+      for (int i = 0; i < numJogadores; i++) {
+
+        String nome = new String(stk.nextToken());
+        float posX = new Float(stk.nextToken()).floatValue();
+        float posY = new Float(stk.nextToken()).floatValue();
+        int col = new Integer(stk.nextToken()).intValue();
+        float boost = new Float(stk.nextToken()).floatValue();
+
+
+        Astronaut a = new Astronaut (nome, posX, posY, col, boost);
+        jogadores.add(a);
+      }
+
+      ArrayList<Planet> planetas = new ArrayList<Planet>();
+
+      int numPlanets = new Integer(stk.nextToken()).intValue();
+
+      for (int i = 0; i < numPlanets; i++) {
+
+        float posX = new Float(stk.nextToken()).floatValue();
+        float posY = new Float(stk.nextToken()).floatValue();
+        float Radius = new Float(stk.nextToken()).floatValue();
+        int col = new Integer(stk.nextToken()).intValue();
+        ;
+
+        Planet p = new Planet (posX, posY, Radius, col);
+        planetas.add(p);
+      }
+
+      jogo.update (jogadores, planetas);
     }
-
-    pontos_Window.setVisible(true);
-    
-  } else {
-
-    int numJogadores = new Integer(stk.nextToken()).intValue();
-
-    ArrayList<Astronaut> jogadores = new ArrayList<Astronaut>();
-    HashMap<String, Integer> pontos = new HashMap<String, Integer>();    
-
-    for (int i = 0; i < numJogadores; i++) {
-
-      String nome = new String(stk.nextToken());
-      float posX = new Float(stk.nextToken()).floatValue();
-      float posY = new Float(stk.nextToken()).floatValue();
-      int col = new Integer(stk.nextToken()).intValue();
-      float boost = new Float(stk.nextToken()).floatValue();
-
-      
-      Astronaut a = new Astronaut (nome, posX, posY,col,boost);
-      jogadores.add(a);
-    }
-
-    ArrayList<Planet> planetas = new ArrayList<Planet>();
-
-    int numPlanets = new Integer(stk.nextToken()).intValue();
-
-    for (int i = 0; i < numPlanets; i++) {
-
-      float posX = new Float(stk.nextToken()).floatValue();
-      float posY = new Float(stk.nextToken()).floatValue();
-      float Radius = new Float(stk.nextToken()).floatValue();
-      int col = new Integer(stk.nextToken()).intValue();;
-
-      Planet p = new Planet (posX, posY, Radius,col);
-      planetas.add(p);
-    }
-    
-    jogo.update (jogadores, planetas);
-    
-  }
   }
   catch (Exception e)
   {

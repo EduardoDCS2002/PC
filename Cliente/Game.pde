@@ -8,25 +8,23 @@ class Game {
 
   ArrayList<Shooter> players;
   ArrayList<Modifier> modifiers;
-  ArrayList<String> playerNames;
-  ArrayList<Integer> playerColors;
+  ArrayList<Bullet> bullets;
   Lock l;
 
-
-
-  public Game (ArrayList<Shooter> players, ArrayList<Modifier> modifiers) {
-
+  public Game (ArrayList<Shooter> players, ArrayList<Bullet> bullet, ArrayList<Modifier> modifiers) {
       this.players  = players;
       this.modifiers = modifiers;
+      this.bullets= bullets;
       this.l = new ReentrantLock();
   }
 
-  void update (ArrayList<Shooter> players, ArrayList<Modifier> modifiers) {
+  void update (ArrayList<Shooter> players, ArrayList<Bullet> bullets, ArrayList<Modifier> modifiers) {
 
     this.l.lock();
     //println("Teste UPDATE");
     try {
       this.players  = players;
+      ArrayList<Bullet> bullets = bullets;
       this.modifiers = modifiers;
     }finally{
       this.l.unlock();
@@ -42,7 +40,9 @@ class Game {
     int margin = 35; // Margem a partir da borda
     int lineHeight = 35; // Altura da linha
     int y = margin; // Iniciar a partir da margem superior
-
+    for (Bullet b : this.bullets){
+      b.display(appc);
+    }
     for (Shooter s : this.players) {
         appc.fill(255,255,255);
         appc.textSize(16);
