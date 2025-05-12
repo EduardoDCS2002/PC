@@ -83,7 +83,7 @@ public void fecha_ranking_window(GWindow window) {
 
 void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
 
-angle = atan2(appc.mouseY - rectY, appc.mouseX - rectX);
+//angle = atan2(appc.mouseY - rectY, appc.mouseX - rectX);
  if (appc.keyPressed) {
    String command = "";
    if(appc.keyCode == LEFT || appc.key == "a"){
@@ -98,12 +98,23 @@ angle = atan2(appc.mouseY - rectY, appc.mouseX - rectX);
    if(appc.keyCode == DOWN || appc.key == "s"){
      command = "D\n";
    }
-
    
    if(command != ""){
      println(command);
      con.write(command);
    }
+  }
+}
+
+void mousePressed_Handler(PApplet appc, GWinData data, MouseEvent event) {
+  if (appc.getButton() == LEFT) {
+    // Calcular direção normalizada
+    float dx = appc.mouseX;
+    float dy = appc.mouseY;
+
+    String command = "SHOOT " + dx + " " + dy + "\n";
+    println(command);
+    con.write(command);  // Envia comando para o servidor
   }
 }
 
@@ -328,6 +339,8 @@ public void criaJogoWindow() {
   jogo_window = null;
   jogo_window = GWindow.getWindow(this, "Jogo", 0, 0, 1300, 700, JAVA2D);
   jogo_window.addKeyHandler(this, "keyPressed_Handler");
+  jogo_window.addKeyHandler(this, "mousePressed_Handler");
+  
 
   jogo_window.setActionOnClose(G4P.CLOSE_WINDOW);
   jogo_window.setVisible(false);
