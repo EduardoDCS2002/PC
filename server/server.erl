@@ -1,174 +1,132 @@
--module (server).
--export ([start/0]).
--import (login_manager, [start_Login_Manager/1, create_account/2, close_account/2, login/2, logout/1]). 
--import (state, [start_state/0]). 
+-module(server).
+-export([start/0]).
+-import(login_manager, [start_Login_Manager/1, create_account/2, close_account/2, login/2, logout/1]).
+-import(state, [start_state/0]).
 
-%Cria o servidor 
-start () ->
-    io:format("Iniciei o Server~n"),
-    PidState = spawn ( fun() -> estado:start_state() end),  %Iniciar o processo com o estado do servidor
-    register(state,PidState),
 
-    {_, L} = file:consult("Logins.txt"),
-    Mapa = maps:from_list(L),
+start() ->
+    io:format("Server started~n"),
+    % Start state process and monitor it
+    StatePid = spawn(fun() -> state:start_state() end),
+    register(state, StatePid),
+    erlang:monitor(process, StatePid),
 
-    register(login_manager, spawn( fun() -> login_manager:start_Login_Manager(Mapa) end)), % Login manager
+    % Load logins or start fresh
+    Mapa = case file:consult("Logins.txt") of
+        {ok, L} -> maps:from_list(L);
+        {error, _} -> maps:new()
+    end,
+
+    % Start login_manager with monitoring
+    LoginManagerPid = spawn(fun() -> login_manager:start_Login_Manager(Mapa) end),
+    register(login_manager, LoginManagerPid),
+    erlang:monitor(process, LoginManagerPid),
+
+    % TCP setup with error handling
     Port = 22346,
-    {ok, Socket} = gen_tcp:listen(Port, [binary, {packet, line}, {reuseaddr, true}]),    %Socket
-    acceptor(Socket).
+    case gen_tcp:listen(Port, [binary, {packet, line}, {reuseaddr, true}]) of
+        {ok, Socket} -> acceptor(Socket);
+        {error, Reason} -> io:format("TCP listen failed: ~p~n", [Reason])
+    end.
 
-acceptor ( Socket )->
-    {ok, Sock} = gen_tcp:accept(Socket),
-    spawn( fun() -> acceptor( Socket ) end), 
-    authenticator(Sock).
+% Acceptor with crash handling
+acceptor(Socket) ->
+    case gen_tcp:accept(Socket) of
+        {ok, Sock} ->
+            spawn(fun() -> acceptor(Socket) end), % Parallel accept
+            authenticator(Sock);
+        {error, closed} -> io:format("Socket closed~n");
+        {error, Reason} -> io:format("Accept error: ~p~n", [Reason])
+    end.
 
+% Authenticator: Parses commands securely
 authenticator(Sock) ->
-    io:format("Iniciei o Autenticador~n"),
     receive
-        {tcp, _ , Data}->
-            StrData = binary:bin_to_list(Data),
-            %io:format("Recebi estes Dados~p~n",[StrData]),
-            ListaDados = string:tokens(string:substr(StrData,1,(string:len(StrData)-2)), " "),
-            LenghtListaDados = length(ListaDados),
-            if 
-                LenghtListaDados == 1 ->
-                    [Acao | _ ] = ListaDados,
-                    User = "",
-                    Pass = "";
-                LenghtListaDados == 2 ->
-                    [Acao | Aux] = ListaDados,
-                    [User | _ ] = Aux,
-                    Pass = "";
-                true ->
-                    [Acao | Aux] = ListaDados,
-                    [User | Passs] = Aux,
-                    [Pass1 | _ ] = Passs,
-                    Pass = Pass1
+        {tcp, _, Data} ->
+            case parse_command(binary_to_list(Data)) of
+                {ok, Cmd, User, Pass} -> handle_command(Sock, Cmd, User, Pass);
+                {error, Msg} -> gen_tcp:send(Sock, Msg)
             end,
-
-            case Acao of
-                "login" when User =:= "" ->
-                    io:format("Login Falhou User inválido ~n"),
-                    gen_tcp:send(Sock,<<"Login Falhou User inválido\n">>),
-                    authenticator(Sock);
-
-                "login" when Pass =:= "" ->
-                    io:format("Login Falhou Pass inválida ~n"),
-                    gen_tcp:send(Sock,<<"Login Falhou Pass inválida\n">>),
-                    authenticator(Sock);
-
-                "login" ->
-                   
-                    U = re:replace(User, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-                    P = re:replace(Pass, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),                   
-                    
-                    case login(U,P) of
-                        ok ->
-                            io:format("Login Deu ~n"),
-                            gen_tcp:send(Sock, <<"Login feito com sucesso!\n">>),
-                            user(Sock, U);
-                        _ ->
-                            io:format("Login nao deu ~n"),
-                            gen_tcp:send(Sock,<<"Erro ao fazer login!\n">>),
-                            authenticator(Sock) % Volta a tentar autenticar-se
-                    end;
-                "create_account" when User =:= "" ->
-                    io:format("Create Account Falhou User inválido ~n"),
-                    gen_tcp:send(Sock,<<"Create Account Falhou User inválido\n">>),
-                    authenticator(Sock);
-
-                "create_account" when Pass =:= "" ->
-                    io:format("Create Account Falhou Pass inválida ~n"),
-                    gen_tcp:send(Sock,<<"Create Account Falhou Pass inválida\n">>),
-                    authenticator(Sock);
-
-                "create_account" ->
-                    
-                    U = re:replace(User, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-                    P = re:replace(Pass, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-                    case create_account(U,P) of
-                        ok ->
-                            io:format("Create Account feito com sucesso! ~n"),
-                            gen_tcp:send(Sock, <<"Create Account feito com sucesso!\n">>),
-                            %user(Sock, U);
-                            authenticator(Sock);
-                        _ ->
-                            io:format("Username e Password não correspondem! ~n"),
-                            gen_tcp:send(Sock,<<"Conta já existente!\n">>),
-                            authenticator(Sock)
-                    end;
-
-                "close_account" when User =:= "" ->
-                    io:format("Close Account Falhou User inválido ~n"),
-                    gen_tcp:send(Sock,<<"Close Account Falhou User inválido \n">>),
-                    authenticator(Sock);
-
-                "close_account" when Pass =:= "" ->
-                    io:format("Close Account Falhou Pass inválida ~n"),
-                    gen_tcp:send(Sock,<<"Close Account Falhou Pass inválida\n">>),
-                    authenticator(Sock);
-
-                "close_account" ->
-                    
-                    U = re:replace(User, "(^\s+)|(\s+$)", "", [global,{return,list}]),
-                    P = re:replace(Pass, "(^\s+)|(\s+$)", "", [global,{return,list}]),
-                    case close_account(U,P) of
-                        ok ->
-                            io:format("Close Account feito com sucesso! ~n"),
-                            gen_tcp:send(Sock, <<"Close Account feito com sucesso!\n">>),
-                            %user(Sock, U);
-                            authenticator(Sock);
-                        _ ->
-                            io:format("Username e Password não correspondem! ~n"),
-                            gen_tcp:send(Sock,<<"Username e Password não correspondem!\n">>),
-                            authenticator(Sock)
-                    end;
-
-                "pontos" ->
-                    io:format("PONTOS ~n");
-
-
-                _ ->
-                    gen_tcp:send(Sock,<<"Opção Inválida \n">>),
-                    %io:format("dados ~p~n",[Data]),
-                    authenticator(Sock)
-            end
+            authenticator(Sock);
+        {tcp_closed, _} -> io:format("Client disconnected~n");
+        {tcp_error, _, Reason} -> io:format("TCP error: ~p~n", [Reason])
     end.
 
-user(Sock, Username) ->
-    statePid ! {ready, Username, self()},
-    gen_tcp:send(Sock, <<"Há espera por vaga\n">>),
-    io:format("Estou á espera de um Começa!~n"),
-    receive % Enquanto não receber resposta fica bloqueado
-        {comeca, GameManager} ->
-            gen_tcp:send(Sock, <<"Comeca\n">>),
-            io:format("Desbloquiei vou começar o jogo~n"),
-            cicloJogo(Sock, Username, GameManager) % Desbloqueou vai para a função principal do jogo
-    end.
-
-cicloJogo(Sock, Username, GameManager) -> 
-    receive
-        {line, Data} -> % line é dados do game manager
-            %io:format("ENVIEI ESTES DADOS~p~n",[Data]),
-            gen_tcp:send(Sock, Data),
-            cicloJogo(Sock, Username, GameManager);
-        {tcp, _, Data} -> % Recebemos alguma coisa do socket (Cliente), enviamos para o GameManager
-            NewData = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-            case NewData of
-                "quit" ->
-                    io:format("Recebi quit~n"),
-                    statePid ! {leave, Username, self()},
-                    logout(Username),
-                    authenticator(Sock);
-                _ ->
-                    %io:format("RECEBI ESTES DADOS~p~n",[Data]),
-                    GameManager ! {keyPressed, Data, self()},
-                    cicloJogo(Sock, Username, GameManager)
+% Robust command parser (supports spaces in passwords)
+parse_command(Data) ->
+    Trimmed = string:trim(Data),
+    case string:split(Trimmed, " ", leading) of
+        [Cmd | Rest] ->
+            case Cmd of
+                "login" -> parse_credentials(Rest, "login");
+                "create_account" -> parse_credentials(Rest, "create_account");
+                "close_account" -> parse_credentials(Rest, "close_account");
+                _ -> {error, <<"Invalid command\n">>}
             end;
-        {tcp_closed, _} ->
-            statePid ! {leave, Username, self()},
+        _ -> {error, <<"Empty command\n">>}
+    end.
+
+parse_credentials([], _Cmd) -> {error, <<"Missing credentials\n">>};
+parse_credentials([UserPass], Cmd) ->
+    case string:split(UserPass, ":", trailing) of
+        [User, Pass] -> {ok, Cmd, string:trim(User), string:trim(Pass)};
+        _ -> {error, <<"Format: COMMAND USER:PASS\n">>}
+    end.
+
+% Command handler
+handle_command(Sock, "login", User, Pass) ->
+    case login(User, Pass) of
+        ok -> 
+            gen_tcp:send(Sock, <<"Login successful\n">>),
+            user(Sock, User);
+        _ -> 
+            gen_tcp:send(Sock, <<"Login failed\n">>)
+    end;
+handle_command(Sock, "create_account", User, Pass) ->
+    case create_account(User, Pass) of
+        ok -> gen_tcp:send(Sock, <<"Account created\n">>);
+        _ -> gen_tcp:send(Sock, <<"Account exists\n">>)
+    end;
+handle_command(Sock, "close_account", User, Pass) ->
+    case close_account(User, Pass) of
+        ok -> gen_tcp:send(Sock, <<"Account closed\n">>);
+        _ -> gen_tcp:send(Sock, <<"Invalid credentials\n">>)
+    end.
+
+% User session with crash handling
+user(Sock, Username) ->
+    state ! {ready, Username, self()},
+    gen_tcp:send(Sock, <<"Waiting for a game...\n">>),
+    receive
+        {comeca, GameManager} ->
+            gen_tcp:send(Sock, <<"Game starts!\n">>),
+            game_loop(Sock, Username, GameManager);
+        {'DOWN', _, _, _, _} -> % Handle process crashes
+            gen_tcp:send(Sock, <<"Server error\n">>)
+    after 30000 -> % Timeout after 30s
+        gen_tcp:send(Sock, <<"Timeout\n">>)
+    end.
+
+% Game loop with quit/error handling
+game_loop(Sock, Username, GameManager) ->
+    receive
+        {line, Data} -> % From GameManager
+            gen_tcp:send(Sock, Data),
+            game_loop(Sock, Username, GameManager);
+        {tcp, _, Data} -> % From client
+            case string:trim(binary_to_list(Data)) of
+                "quit" -> 
+                    state ! {leave, Username, self()},
+                    logout(Username),
+                    gen_tcp:send(Sock, <<"Goodbye!\n">>);
+                Input ->
+                    GameManager ! {keyPressed, Input, self()},
+                    game_loop(Sock, Username, GameManager)
+            end;
+        {tcp_closed, _} -> 
+            state ! {leave, Username, self()},
             logout(Username);
-        {tcp_error, _} ->
-            statePid ! {leave, Username, self()},
+        {tcp_error, _, _} -> 
+            state ! {leave, Username, self()},
             logout(Username)
     end.

@@ -1,36 +1,35 @@
 -module(projectile).
 -export([new_projectile/2, update_projectiles/1, filter_expired/1]).
 
--import(math, [sqrt/1, pow/2, atan2/2, cos/1, sin/1]).
-
 -define(PROJECTILE_RADIUS, 3).
--define(PROJECTILE_SPEED, 8.0).
--define(PROJECTILE_LIFESPAN, 2000).
+-define(PROJECTILE_SPEED, 8.0).  % Pixels per update
+-define(PROJECTILE_LIFESPAN_MS, 2000).
+-define(SCREEN_WIDTH, 1300).
+-define(SCREEN_HEIGHT, 700).
 
-%%% Cria um novo projétil com base na posição do jogador e do cursor
-%%% Pode ser necessario meter o ID do jogador
+
+new_projectile({PlayerX, PlayerY}, {PlayerX, PlayerY}) ->  % Handle zero distance
+    {PlayerX, PlayerY}, {0.0, 0.0}, ?PROJECTILE_RADIUS, erlang:system_time(millisecond)};
 new_projectile({PlayerX, PlayerY}, {CursorX, CursorY}) ->
     Dx = CursorX - PlayerX,
     Dy = CursorY - PlayerY,
-    Angle = atan2(Dy, Dx),
-    Vx = ?PROJECTILE_SPEED * cos(Angle),
-    Vy = ?PROJECTILE_SPEED * sin(Angle),
-    Velocity = {Vx, Vy},
-    Position = {PlayerX, PlayerY},
-    Timestamp = erlang:system_time(millisecond),
-    {Position, Velocity, ?PROJECTILE_RADIUS, Timestamp}.
+    Angle = math:atan2(Dy, Dx),
+    Vx = ?PROJECTILE_SPEED * math:cos(Angle),
+    Vy = ?PROJECTILE_SPEED * math:sin(Angle),
+    {{PlayerX, PlayerY}, {Vx, Vy}, ?PROJECTILE_RADIUS, erlang:system_time(millisecond)}.
 
-%%% Atualiza a posição de todos os projéteis
+filter_out_of_bounds(Projectiles) ->
+    [P || P = {{X, Y}, _, _, _} <- Projectiles,
+           X >= 0, X =< ?SCREEN_WIDTH,
+           Y >= 0, Y =< ?SCREEN_HEIGHT].
+
 update_projectiles(Projectiles) ->
-    [update_projectile(Proj) || Proj <- Projectiles].
+    Projectiles_In_Bounds = filter_out_of_bounds(Projectiles)
+    [update_projectile(Proj) || Proj <- Projectiles_In_Bounds].
 
-%%% Atualiza um projétil individual
 update_projectile({{X, Y}, {Vx, Vy}, Radius, Timestamp}) ->
-    NewX = X + Vx,
-    NewY = Y + Vy,
-    {{NewX, NewY}, {Vx, Vy}, Radius, Timestamp}.
+    {{X + Vx, Y + Vy}, {Vx, Vy}, Radius, Timestamp}.
 
-%%% Remove projéteis antigos que já passaram do tempo de vida
 filter_expired(Projectiles) ->
     Now = erlang:system_time(millisecond),
-    [B || B = {_, _, _, T} <- Projectiles, Now - T =< ?PROJECTILE_LIFESPAN].
+    [P || P = {_, _, _, T} <- Projectiles, Now - T =< ?PROJECTILE_LIFESPAN_MS].

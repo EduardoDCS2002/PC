@@ -1,28 +1,40 @@
 -module(collision).
--export([check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, collision_modifier/2, collision_bullet/2,check_colision_boards_players/1,check_colision_boards_bullet/1,borda/1]).
+-export([check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, 
+         collision_modifier/2, collision_bullet/2,
+         check_colision_boards_players/1, check_colision_boards_bullet/1,
+         borda/1]).
 
--import(math, [sqrt/1, pow/2]).
+-define(PLAYER_RADIUS, 20.0).
+-define(SCREEN_WIDTH, 1300).
+-define(SCREEN_HEIGHT, 700).
 
 distance({X1, Y1}, {X2, Y2}) ->
-    sqrt(pow(X2 - X1, 2) + pow(Y2 - Y1, 2)).
+    sqrt(math:pow(X2 - X1, 2) + math:pow(Y2 - Y1, 2)).
+
+borda({{{X, Y}, _, _}, _}) ->
+    X < 0 orelse X > ?SCREEN_WIDTH orelse 
+    Y < 0 orelse Y > ?SCREEN_HEIGHT.
+
+collision_modifier({{PosPlay, _, _}, _}, {PosMod, RadiusMod, _, _}) ->
+    distance(PosPlay, PosMod) =< (?PLAYER_RADIUS + RadiusMod).
+
+collision_bullet({{PosPlay, _, _}, _}, {PosBul, _, RadiusBul, _}) ->
+    distance(PosPlay, PosBul) =< (?PLAYER_RADIUS + RadiusBul).
 
 check_collisions_modifiers(Players, Modifiers) ->
-    [{Player, Modifeir} || Player <- Players, Modifier <- Modifiers, collision_modifer(Player, Modifier)].
+    [{Player, Modifier} || 
+        Player <- Players, 
+        Modifier <- Modifiers, 
+        collision_modifier(Player, Modifier)].
 
-check_collisions_bullet(Players, Projectlies) ->
-    [{Player, Projectile} || Player <- Players, Projectile <- Projectiles, collision_bullet(Player, Projectile)].  
+check_collisions_bullet(Players, Projectiles) ->
+    [{Player, Projectile} || 
+        Player <- Players, 
+        Projectile <- Projectiles, 
+        collision_bullet(Player, Projectile)].
 
 check_colision_boards_players(Players) ->
     [Player || Player <- Players, borda(Player)].
 
 check_colision_boards_bullet(Projectiles) ->
     [Projectile || Projectile <- Projectiles, borda(Projectile)].
-
-borda({{{X,Y}, _, _},{_,_}} ) ->
-    X =< -650 + 1300/2 orelse X >= 650 + 1300/2  orelse Y =< -350 + 700/2 orelse Y >= 350 + 700/2.
-
-collision_modifier({{PosPlay, _, _},{_,_}}, {PosModi, RadiusModi, _, _}) ->
-    distance(PosPlay, PosModi) =< (20.0 + RadiusModi).
-
-collision_bullet({{PosPlay, _, _},{_,_}}, {PosBul, _, RadiusBul,_}) ->
-    distance(PosPlay, PosBul) =< (20.0 + RadiusBul).
