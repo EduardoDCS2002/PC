@@ -11,7 +11,10 @@ newPlayer(Id) ->
         1 -> {float(rand:uniform(200)), float(rand:uniform(700))};         % Lado esquerdo
         2 -> {float(1100 + rand:uniform(200)), float(rand:uniform(700))}   % Lado direito
     end,
-    {Position, Velocity, Color}.
+    Score = 0,
+    BulletSpeed = 8.0,
+    BulletReload = 4.0,
+    {Position, Velocity, Color, Score}.
 
 
 %%% Traduz teclas em aceleração acumulada (é possivel que tenha de ser alterado para receber uma lista de teclas)
@@ -29,7 +32,7 @@ clamp(V, Max) when V < -Max -> -Max;
 clamp(V, _) -> V.
 
 %%% Atualiza a posição do player com base nas teclas 
-update_player_position({{Pos, Vel, Color}, UserData}, Key) ->
+update_player_position({{Pos, Vel, Color, Score}, UserData}, Key) ->
 
     {Ax,Ay}= movement_to_acceleration(Key),
     {Vx, Vy} = Vel,
@@ -39,4 +42,30 @@ update_player_position({{Pos, Vel, Color}, UserData}, Key) ->
     NewX = X + NewVx,
     NewY = Y + NewVy,
     
-    {{{NewX, NewY}, {NewVx, NewVy}, Color}, UserData}.
+    {{{NewX, NewY}, {NewVx, NewVy}, Color, Score}, UserData}.
+
+%%% Atualiza os buffs do player
+update_player_buff({{Pos, Vel, Color, Score}, UserData}, Key) ->
+
+    {Ax,Ay}= movement_to_acceleration(Key),
+    {Vx, Vy} = Vel,
+    NewVx = clamp(Vx + Ax, ?MAX_SPEED),
+    NewVy = clamp(Vy + Ay, ?MAX_SPEED),
+    {X, Y} = Pos,
+    NewX = X + NewVx,
+    NewY = Y + NewVy,
+    
+    {{{NewX, NewY}, {NewVx, NewVy}, Color, Score}, UserData}.
+
+%%% Atualiza o score da partida
+update_player_position({{Pos, Vel, Color, Score}, UserData}, Key) ->
+
+    {Ax,Ay}= movement_to_acceleration(Key),
+    {Vx, Vy} = Vel,
+    NewVx = clamp(Vx + Ax, ?MAX_SPEED),
+    NewVy = clamp(Vy + Ay, ?MAX_SPEED),
+    {X, Y} = Pos,
+    NewX = X + NewVx,
+    NewY = Y + NewVy,
+    
+    {{{NewX, NewY}, {NewVx, NewVy}, Color, Score}, UserData}.

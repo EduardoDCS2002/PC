@@ -36,5 +36,5 @@ check_collisions_bullet(Players, Projectiles) ->
 check_colision_boards_players(Players) ->
     [Player || Player <- Players, borda(Player)].
 
-check_colision_boards_bullet(Projectiles) ->
-    [Projectile || Projectile <- Projectiles, borda(Projectile)].
+%%%check_colision_boards_bullet(Projectiles) ->
+%%%    [Projectile || Projectile <- Projectiles, borda(Projectile)].
