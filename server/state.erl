@@ -156,23 +156,28 @@ estado(Atuais_Jogadores, Espera_Jogadores) ->
 
 
 novoEstado() ->
-    %player, planets, screensize
-    NewPlanet1 = planet:newPlanet(),
-    NewPlanet2 = planet:newPlanet(),
-    NewPlanet3 = planet:newPlanet(),
-    State = {[], [NewPlanet1,NewPlanet2,NewPlanet3], {1300,700}},
+    %player, modifiers, bullets, screensize
+    NewModifier1 = modifier:new_modifier(),
+    NewModifier2 = modifier:new_modifier(),
+    NewModifier3 = modifier:new_modifier(),
+    State = {[], [NewModifier1,NewModifier2,NewModifier3],[], {1300,700}},
     io:fwrite("Estado novo Gerado: ~p ~n", [State]),
     State.
 
 adicionaJogador(Estado,Jogador) ->
-    {ListaJogadores, ListaPlanetas, TamanhoEcra} = Estado,
-    State = { ListaJogadores ++ [{astronaut:newAstronaut(), Jogador}], ListaPlanetas,TamanhoEcra},
+    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
+    NovaListaJogadores=
+        case length(ListaJogadores) of
+            0 -> ListaJogadores ++ [{player:newPlayer(1), Jogador}];
+            1 -> ListaJogadores ++ [{player:newPlayer(2), Jogador}]
+        end,
+    State = { NovaListaJogadores , ListaModifiers, TamanhoEcra},
     io:fwrite("Estado: ~p ~n", [State]),
     State.
 
 removeJogador(Estado,Jogador) ->
-    {ListaJogadores, ListaPlanetas, TamanhoEcra} = Estado,
-    State = { ListaJogadores -- [Jogador], ListaPlanetas, TamanhoEcra},
+    {ListaJogadores, ListaModifiers, TamanhoEcra} = Estado,
+    State = { ListaJogadores -- [Jogador], ListaModifiers, TamanhoEcra},
     io:fwrite("Estado com jogador removido: ~p ~n", [State]),
     State.
 
@@ -186,14 +191,14 @@ gameManager(Estado)->
 
         %Recebe os argumentos de movimentação e atualiza a posição dos jogadores
         {Coordenadas, Data, From} ->
-            {ListaJogadores, ListaPlanetas, TamanhoEcra} = Estado,
+            {ListaJogadores, ListaModifiers, TamanhoEcra} = Estado,
 
             % Encontrar e atualizar o jogador
             NovaListaJogadores = lists:map(
                 fun({PlayerCordinates, {Username, Pid}} = Jogador) ->
                     case Pid of
                         From ->
-                            NovoJogador = astronaut:update_astronaut_position({PlayerCordinates, {Username, Pid}}, Data),
+                            NovoJogador = player:update_player_position({PlayerCordinates, {Username, Pid}}, Data),
                             NovoJogador;
                         _ ->
                             Jogador
@@ -202,7 +207,7 @@ gameManager(Estado)->
                 ListaJogadores
             ),
 
-            NovoEstado = {NovaListaJogadores, ListaPlanetas, TamanhoEcra},
+            NovoEstado = {NovaListaJogadores, ListaModifiers, TamanhoEcra},
 
             gameManager(NovoEstado);
             
@@ -238,40 +243,6 @@ gameManager(Estado)->
                             gameManager(removeJogador(Estado,H2));
                         true ->
                             gameManager(Estado)
-                    end;
-                length(ListaJogadores) == 3 ->
-                    [H1, H2, H3 |T] = ListaJogadores,
-                    {_, {_, Pid1}} = H1,
-                    {_, {_, Pid2}} = H2,
-                    {_, {_, Pid3}} = H3,
-                    if
-                        Pid1 == From ->
-                            gameManager(removeJogador(Estado,H1));
-                        Pid2 == From ->
-                            gameManager(removeJogador(Estado,H2));
-                        Pid3 == From ->
-                            gameManager(removeJogador(Estado,H3));
-                        true ->
-                            gameManager(Estado)
-                    end;
-                length(ListaJogadores) == 4 ->
-                    [H1, H2, H3, H4 | T] = ListaJogadores,
-                    {_, {_, Pid1}} = H1,
-                    {_, {_, Pid2}} = H2,
-                    {_, {_, Pid3}} = H3,
-                    {_, {_, Pid4}} = H4,
-
-                    if
-                        Pid1 == From ->
-                            gameManager(removeJogador(Estado,H1));
-                        Pid2 == From ->
-                            gameManager(removeJogador(Estado,H2));
-                        Pid3 == From ->
-                            gameManager(removeJogador(Estado,H3));
-                        Pid4 == From ->
-                            gameManager(removeJogador(Estado,H4));
-                        true ->
-                            gameManager(Estado)
                     end
             end
 
@@ -281,10 +252,10 @@ gameManager(Estado)->
 
 %Verifica as colisoes, atualiza todos os objectos e verifica tambem se alguem ganhou ou perdeu 
 update(Estado) ->
-    {ListaJogadores, ListaPlanetas, TamanhoEcra} = Estado,
+    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
     
-    NewPlanets = planet:updatePlanetList(ListaPlanetas),
-    NewAstronauts = astronaut:updateAstronautList(ListaJogadores),
+    NewModifiers = modifier:update_modifiers(ListaModifiers),
+    NewBullets = b:updateAstronautList(ListaJogadores),
 
     % Verificação de colisões
     CollisionsPlanets = collision:check_collisions(NewAstronauts, NewPlanets),

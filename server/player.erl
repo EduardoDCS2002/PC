@@ -4,10 +4,13 @@
 -define(ACCELERATION, 0.2).
 
 %%% Cria um novo player com posição aleatória e velocidade zero (alterar para ser posiçoes opostas ) ??
-newPlayer() ->
+newPlayer(Id) ->
     Color = 50 + rand:uniform(205),
     Velocity = {0.0, 0.0},
-    Position = {float(rand:uniform(1300))+50, float(rand:uniform(700))+50},
+    Position = case Id of
+        1 -> {float(rand:uniform(200)), float(rand:uniform(700))};         % Lado esquerdo
+        2 -> {float(1100 + rand:uniform(200)), float(rand:uniform(700))}   % Lado direito
+    end,
     {Position, Velocity, Color}.
 
 
