@@ -1,8 +1,11 @@
 -module (estado).
 -export ([start_state/0, update/1, handle_planet_collisions/1, handle_astronaut_collisions/2, handle_sun_collisions/1, update_astronaut_position/3]).
--import(modifier, [new_modifier/0, update_modifiers/1]).
+-import(modifier, [new_modifier/0, update_modifiers/1, remove_modifier/2]).
 -import(player, [newPlayer/0, update_player_position/2]).
--import(collision, [check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, collision_modifier/2, collision_bullet/2,check_colision_boards_players/1,check_colision_boards_bullet/1,borda/1]).
+-import(collision, [check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, 
+         collision_modifier/2, collision_bullet/2,
+         check_colision_boards_players/1, check_colision_boards_bullet/1,
+         borda/1]).
 -import (timer, [send_after/3]).%% verificar o estado do jogo
 -import (conversores, [formatState/1, formataTecla/1]).
 

@@ -8,8 +8,8 @@
 -define(SCREEN_HEIGHT, 700).
 
 
-new_projectile({PlayerX, PlayerY}, {PlayerX, PlayerY}) ->  % Handle zero distance
-    {PlayerX, PlayerY}, {0.0, 0.0}, ?PROJECTILE_RADIUS, erlang:system_time(millisecond)};
+%%%new_projectile({PlayerX, PlayerY}, {PlayerX, PlayerY}) ->  % Handle zero distance
+    %%%{PlayerX, PlayerY}, {0.0, 0.0}, ?PROJECTILE_RADIUS, erlang:system_time(millisecond)};
 new_projectile({PlayerX, PlayerY}, {CursorX, CursorY}) ->
     Dx = CursorX - PlayerX,
     Dy = CursorY - PlayerY,
