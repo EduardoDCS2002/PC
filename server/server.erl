@@ -9,16 +9,17 @@ start() ->
     % Start state process and monitor it
     StatePid = spawn(fun() -> state:start_state() end),
     register(state, StatePid),
-    erlang:monitor(process, StatePid),
+    erlang:monitor(process, StatePid), % starts monitoring the state, if it crashes it will send a message
+                                    %  to the server with this format {'DOWN', MonitorRef, process, StatePid, Reason}
 
     % Load logins or start fresh
-    Mapa = case file:consult("Logins.txt") of
+    LoginMap = case file:consult("Logins.txt") of
         {ok, L} -> maps:from_list(L);
         {error, _} -> maps:new()
     end,
 
     % Start login_manager with monitoring
-    LoginManagerPid = spawn(fun() -> login_manager:start_Login_Manager(Mapa) end),
+    LoginManagerPid = spawn(fun() -> login_manager:start_Login_Manager(LoginMap) end),
     register(login_manager, LoginManagerPid),
     erlang:monitor(process, LoginManagerPid),
 

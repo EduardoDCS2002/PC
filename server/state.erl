@@ -12,18 +12,18 @@
 
 
 start_state() ->
-    io:format(" Novo Jogo~n"),
+    io:format(" New state~n"),
     register(game,spawn( fun() -> gameManager (novoEstado()) end )),
     Timer = spawn( fun() -> refresh(game) end),
     Salas = criaSalas(),
     register(statePid,spawn( fun() -> lounge(Salas)  end)).
 
-refresh (Pid) -> receive after 10 -> Pid ! {refresh, self()}, refresh(Pid) end.
+refresh (Pid) -> receive after 10 -> Pid ! {refresh, self()}, refresh(Pid) end. % every 10 miliseconds will send the refresh signal to Pid
 
 novaSala() -> 
     [{spawn(fun() -> estado([],[]) end),[]}].
 
-%Cria 4 salas com Pids diferentes 
+%Cria 4 salas 
 criaSalas() -> 
     novaSala() ++ novaSala() ++ novaSala() ++ novaSala(). 
 
@@ -32,7 +32,7 @@ lounge(Salas) ->
     receive 
         {ready,Username, UserProcess} -> 
 
-            Sala = verificaSala(Salas), 
+            Sala = verificaSala(Salas), % returns a room with space
             {Pid,ListaJogadores} = Sala,
             NovasSalas = remove(Sala,Salas),
             Pid ! {ready,Username,UserProcess},
@@ -158,11 +158,8 @@ estado(Atuais_Jogadores, Espera_Jogadores) ->
 
 novoEstado() ->
     %player, modifiers, bullets, screensize
-    NewModifier1 = modifier:new_modifier(),
-    NewModifier2 = modifier:new_modifier(),
-    NewModifier3 = modifier:new_modifier(),
-    State = {[], [NewModifier1,NewModifier2,NewModifier3],[], {1300,700}},
-    io:fwrite("Estado novo Gerado: ~p ~n", [State]),
+    State = {[], [],[], {1300,700}},
+    io:fwrite("Estado novo Gerado.~n"),
     State.
 
 adicionaJogador(Estado,Jogador) ->
@@ -187,7 +184,7 @@ removeJogador(Estado,Jogador) ->
 gameManager(Estado)->
     receive
         {geraJogador, From} ->
-            io:format("Vou gerar jogador~n"),
+            io:format("Gerar jogador~n"),
             %% Envia mensagem {game_over} após 2 minutos
             timer:send_after(120000, self(), game_over),    
             gameManager(adicionaJogador(Estado,From));
@@ -283,20 +280,23 @@ update(Estado) ->
     
     NewModifiers = modifier:update_modifiers(ListaModifiers),
     NewBullets = projectile:update_projectiles(ListaBullets),
+    NewPlayers = player:update_players_decay(ListaJogadores),
 
     % Verificação de colisões
-    CollisionsModifiers = collision:check_collisions_modifiers(ListaJogadores, NewModifiers),
-    CollisionsBullets = collision:check_collisions_bullet(ListaJogadores, NewBullets),
-    CollisionsBorder = collision:check_outbordas(ListaJogadores),
+    CollisionsModifiers = collision:check_collisions_modifiers(NewPlayers, NewModifiers),
+    PlayersAfterModifiers = handle_modifier_collisions(CollisionsModifiers),
+    
+    CollisionsBullets = collision:check_collisions_bullet(PlayersAfterModifiers, NewBullets),
+    PlayersAfterBullets = handle_bullet_collisions(CollisionsBullets, PlayersAfterModifiers), 
+    
+    CollisionsBorder = collision:check_colision_boards_players(PlayersAfterBullets),
+    PlayersAfterBorders = handle_bordas(CollisionsBorder, PlayersAfterBullets),
 
 
     %%something is wrong here, penso que o fullyupdatePlayer tinha de ser o bullet collision
-    handle_modifier_collisions(CollisionsModifiers),
-    handle_bullet_collisions(CollisionsBullets), % é preciso dar pontos ao jogador que não aparece aqui e fazer desaparecer a bala que aparece aqui
-    handle_bordas(CollisionsBorder),
     %%FullyUpdatedPlayers = handle_player_collisions(CollisionsAstronauts,NewAstronauts),
     verify_victory(Estado),
-    {ListaJogadores, NewModifiers, NewBullets, TamanhoEcra}.
+    {PlayersAfterBorders, NewModifiers, NewBullets, TamanhoEcra}.
 
 %% still didnt finish
 verify_victory(Estado) ->
@@ -320,6 +320,12 @@ verify_victory(Estado) ->
             ok
     end.
 
+handle_bordas([], Players) ->
+    Players;
+handle_bordas(PlayersCollided, AllPlayers) ->
+    NotChangedPlayers = [Player || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =:= IdP],
+    ChangedPlayers = [player:update_player_score(Player, 2) || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =/= IdP],
+    player:update_players_position_reset(NotChangedPlayers ++ ChangedPlayers).
 
 handle_loss(User,Pid) ->
     Pid ! {line,"Perdeu\n"},
@@ -331,14 +337,21 @@ handle_win(User,Pid) ->
     login_manager:logout(User),
     login_manager:update_win(User).
 
+handle_bullet_collisions([], Players) ->
+    Players;
+handle_bullet_collisions([{{{IdP, _, _, _, _, _, _}, _}, _} | Rest], Players) ->
+    io:format("Collision between bullet ~p and player ~p~n", [IdP, Players]),
+    
+    NotChangedPlayers = [Player || Player = {{PId, _, _, _, _, _, _}, _} <- Players, PId =:= IdP],
+    ChangeScorePlayers = [player:update_player_score(Player, 1) || Player = {{PId, _, _, _, _, _, _}, _} <- Players, PId =/= IdP],
+    handle_bullet_collisions(Rest, NotChangedPlayers ++ ChangeScorePlayers).
+
 %%Aplicar os efeitos dos modificadores
 handle_modifier_collisions([]) ->
     [];
 handle_modifier_collisions([{Player, Modifier} | Rest]) ->
-    {_, {U, Pid}} = Player,
     io:format("Colisão com um modificador ~p e ~p~n", [Player, Modifier]),
-    fazer função que atribui o modifier ao player(ou seja detetar O MODIFIER E ADICIONAR OU RETIRAR O QUe for preciso)
-    %também é necessário remover o modifier do campo, pode ser aqui ou noutro sítio.
+    [player:update_player_modifier(Player, Modifier) | handle_modifier_collisions(Rest)].
 
 handle_bordas([]) ->
     [];
