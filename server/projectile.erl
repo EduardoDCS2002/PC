@@ -1,5 +1,5 @@
 -module(projectile).
--export([new_projectile/2, update_projectiles/1, filter_expired/1]).
+-export([new_projectile/3, update_projectiles/1, filter_expired/1]).
 
 -define(PROJECTILE_RADIUS, 3).
 -define(PROJECTILE_SPEED, 8.0).  % Pixels per update
@@ -10,12 +10,12 @@
 
 %%%new_projectile({PlayerX, PlayerY}, {PlayerX, PlayerY}) ->  % Handle zero distance
     %%%{PlayerX, PlayerY}, {0.0, 0.0}, ?PROJECTILE_RADIUS, erlang:system_time(millisecond)};
-new_projectile({PlayerX, PlayerY}, {CursorX, CursorY}) ->
+new_projectile({PlayerX, PlayerY}, {CursorX, CursorY}, BulletSpeed) ->
     Dx = CursorX - PlayerX,
     Dy = CursorY - PlayerY,
     Angle = math:atan2(Dy, Dx),
-    Vx = ?PROJECTILE_SPEED * math:cos(Angle),
-    Vy = ?PROJECTILE_SPEED * math:sin(Angle),
+    Vx = ?PROJECTILE_SPEED + BulletSpeed * math:cos(Angle),
+    Vy = ?PROJECTILE_SPEED + BulletSpeed * math:sin(Angle),
     {{PlayerX, PlayerY}, {Vx, Vy}, ?PROJECTILE_RADIUS, erlang:system_time(millisecond)}.
 
 filter_out_of_bounds(Projectiles) ->
@@ -24,7 +24,7 @@ filter_out_of_bounds(Projectiles) ->
            Y >= 0, Y =< ?SCREEN_HEIGHT].
 
 update_projectiles(Projectiles) ->
-    Projectiles_In_Bounds = filter_out_of_bounds(Projectiles)
+    Projectiles_In_Bounds = filter_out_of_bounds(Projectiles),
     [update_projectile(Proj) || Proj <- Projectiles_In_Bounds].
 
 update_projectile({{X, Y}, {Vx, Vy}, Radius, Timestamp}) ->

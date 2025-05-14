@@ -1,7 +1,7 @@
 -module(collision).
 -export([check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, 
          collision_modifier/2, collision_bullet/2,
-         check_colision_boards_players/1, check_colision_boards_bullet/1,
+         check_colision_boards_players/1, %check_colision_boards_bullet/1,
          borda/1]).
 
 -define(PLAYER_RADIUS, 20.0).
@@ -9,7 +9,7 @@
 -define(SCREEN_HEIGHT, 700).
 
 distance({X1, Y1}, {X2, Y2}) ->
-    sqrt(math:pow(X2 - X1, 2) + math:pow(Y2 - Y1, 2)).
+    math:sqrt(math:pow(X2 - X1, 2) + math:pow(Y2 - Y1, 2)).
 
 borda({{{X, Y}, _, _}, _}) ->
     X < 0 orelse X > ?SCREEN_WIDTH orelse 

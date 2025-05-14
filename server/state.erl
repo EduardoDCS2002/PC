@@ -1,5 +1,5 @@
--module (estado).
--export ([start_state/0, update/1, handle_planet_collisions/1, handle_astronaut_collisions/2, handle_sun_collisions/1, update_astronaut_position/3]).
+-module (state).
+-export ([start_state/0, update/1]).
 -import(modifier, [new_modifier/0, update_modifiers/1, remove_modifier/2]).
 -import(player, [newPlayer/0, update_player_position/2]).
 -import(collision, [check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, 
@@ -8,7 +8,7 @@
          borda/1]).
 -import(projectile,[new_projectile/2, update_projectiles/1]).
 -import (timer, [send_after/3]).%% verificar o estado do jogo
--import (conversores, [formatState/1, formataTecla/1]).
+-import (conversor, [formatState/1, formataTecla/1]).
 
 
 start_state() ->
@@ -52,7 +52,7 @@ remove(X, L) ->
 
 
 %Encontra o Jogador na sala onde ele se encontra
-ondEstaJogador([],UserProcess) -> []; 
+ondEstaJogador([], _) -> []; 
 
 ondEstaJogador([{Pid,[X|Y]}|T],UserProcess) -> 
     {User,Process} = X, 
@@ -92,7 +92,7 @@ esperar_jogadores(Espera_Jogadores, TimerRef) ->
 
         {timeout} ->
             % Quando o tempo expira, inicia o jogo se houver jogadores suficientes
-            if length(Espera_Jogadores) = 2 ->
+            if length(Espera_Jogadores) == 2 ->
                 [JogadorPid ! {comeca, game} || {_, JogadorPid} <- Espera_Jogadores],
                 [game ! {geraJogador, {Username, UserProcess}} || {Username, UserProcess} <- Espera_Jogadores],
                 estado(Espera_Jogadores, []);
@@ -137,7 +137,7 @@ estado(Atuais_Jogadores, Espera_Jogadores) ->
                     estado(Lista, Espera_Jogadores);
                 _ ->
                     io:format("A lista de jogadores ativos atuais ~p ~n", [Atuais_Jogadores]),
-                    io:format("Vou tirar o da lista ~p ~n", [{Username, UserProcess}]),
+                    io:format("Vou tirar o ~p da lista ~n", [{Username, UserProcess}]),
                     Lista = Atuais_Jogadores -- [{Username, UserProcess}],
                     io:format("Lista jogador removido ~p ~n", [Lista]),
                     if
@@ -170,7 +170,8 @@ adicionaJogador(Estado,Jogador) ->
     NovaListaJogadores=
         case length(ListaJogadores) of
             0 -> ListaJogadores ++ [{player:newPlayer(1), Jogador}];
-            1 -> ListaJogadores ++ [{player:newPlayer(2), Jogador}]
+            1 -> ListaJogadores ++ [{player:newPlayer(2), Jogador}];
+            2 -> ListaJogadores
         end,
     State = { NovaListaJogadores , ListaModifiers, ListaBullets, TamanhoEcra},
     io:fwrite("Estado: ~p ~n", [State]),
@@ -193,7 +194,7 @@ gameManager(Estado)->
         
 
         %Recebe os argumentos de movimentação e atualiza a posição dos jogadores
-        {Coordenadas, Data, From} ->
+        {movePlayer, Data, From} ->
             {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
 
             % Encontrar e atualizar o jogador
@@ -215,25 +216,25 @@ gameManager(Estado)->
             gameManager(NovoEstado);
 
         %Recebe os argumentos de shooting e cria the bullet
-        {Coordenadas, Data, From} ->
+        {shoot, Data, From} ->
             {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
 
             % Criar a Bala
-            NovaListaBullets = lists:map(
+            BulletsCriadas = lists:filtermap(
                 %%% nao esta direito, brain lag , precisa de receber as cordenadas certas
-                fun({PlayerCordinates, {Username, Pid}} = Jogador) ->
+                fun({{{PosX, PosY}, _, _, _, BulletSpeed, _}, {_, Pid}}) ->
                     case Pid of
                         From ->
-                            NovaBala = projectile:new_projectile({PlayerCordinates, {Username, Pid}}, Data),
-                            NovoJogador;
+                            NovaBala = projectile:new_projectile({PosX, PosY}, Data, BulletSpeed), % Data aqui deve ser {CursorX, CursorY}
+                            NovaBala;
                         _ ->
-                            Jogador
+                            false % deve dar skip right?
                     end
                 end,
                 ListaJogadores
             ),
-
-            NovoEstado = {NovaListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra},
+            NovaListaBullets = BulletsCriadas ++ ListaBullets,
+            NovoEstado = {ListaJogadores, ListaModifiers, NovaListaBullets, TamanhoEcra},
 
             gameManager(NovoEstado);
 
@@ -291,7 +292,7 @@ update(Estado) ->
 
     %%something is wrong here, penso que o fullyupdatePlayer tinha de ser o bullet collision
     handle_modifier_collisions(CollisionsModifiers),
-    handle_bullet_collisions(CollisionsBullets),
+    handle_bullet_collisions(CollisionsBullets), % é preciso dar pontos ao jogador que não aparece aqui e fazer desaparecer a bala que aparece aqui
     handle_bordas(CollisionsBorder),
     %%FullyUpdatedPlayers = handle_player_collisions(CollisionsAstronauts,NewAstronauts),
     verify_victory(Estado),
@@ -336,40 +337,14 @@ handle_modifier_collisions([]) ->
 handle_modifier_collisions([{Player, Modifier} | Rest]) ->
     {_, {U, Pid}} = Player,
     io:format("Colisão com um modificador ~p e ~p~n", [Player, Modifier]),
-    handle_loss(U,Pid),
-    game ! {leave, Pid},
-    handle_planet_collisions(Rest).
+    fazer função que atribui o modifier ao player(ou seja detetar O MODIFIER E ADICIONAR OU RETIRAR O QUe for preciso)
+    %também é necessário remover o modifier do campo, pode ser aqui ou noutro sítio.
 
 handle_bordas([]) ->
     [];
-handle_bordas([Player | Players]) ->
+handle_bordas([Player | Players]) -> % precisa de atualizar o score do Player e devolver o novo valor
     {_,{U,Pid}} = Player,
     io:format("O jogador ~p bateu na borda.~n",[Player]),
     %%handle_loss(U,Pid),
     %%game ! {leave, Pid},
     handle_bordas(Players).
-
-handle_astronaut_collisions([], Astronauts) ->
-    Astronauts;
-handle_astronaut_collisions([{Astronaut1, Astronaut2} | Rest], Astronauts) ->
-    {{_, _, OrbitRadius1, _, _, _, _}, _} = Astronaut1,
-    {{_, _, OrbitRadius2, _, _, _, _}, _} = Astronaut2,
-    io:format("Colisão entre ~p e ~p~n", [Astronaut1, Astronaut2]),
-    UpdatedAstronauts =
-        case OrbitRadius1 > OrbitRadius2 of
-            true ->
-                TempAstronauts = update_astronaut_position(Astronauts, Astronaut1, <<"L\n">>),
-                update_astronaut_position(TempAstronauts, Astronaut2, <<"R\n">>);
-            false ->
-                TempAstronauts = update_astronaut_position(Astronauts, Astronaut1, <<"R\n">>),
-                update_astronaut_position(TempAstronauts, Astronaut2, <<"L\n">>)
-        end,
-    handle_astronaut_collisions(Rest, UpdatedAstronauts).
-
-update_astronaut_position([], _, _) ->
-    [];
-update_astronaut_position([{AstronautData, State} | Rest], Astronaut, Position) when AstronautData == Astronaut ->
-    UpdatedAstronaut = astronaut:update_astronaut_position(AstronautData, Position),
-    [{UpdatedAstronaut, State} | update_astronaut_position(Rest, Astronaut, Position)];
-update_astronaut_position([AstronautData | Rest], Astronaut, Position) ->
-    [AstronautData | update_astronaut_position(Rest, Astronaut, Position)].
