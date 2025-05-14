@@ -1,17 +1,15 @@
 class Shooter {
   float x,y;
-  float angle;
   int col;
   String name;
   
 
   // Construtor
-  Shooter(String name, float x, float y,int col, float angle) {
+  Shooter(String name, float x, float y,int col) {
     this.name = name;
     this.x = x;
     this.y = y;
     this.col = col;
-    this.angle = angle;
   }
 
   // Método para desenhar o astronauta
@@ -20,7 +18,8 @@ class Shooter {
     appc.pushMatrix();
     appc.translate(this.x, this.y);
     appc.ellipse(0, 0, 20, 20);
-    appc.rotate(radians(this.angle));
+    //appc.rotate(radians(this.angle));
+    //rever se é necessario
     appc.rect(20, 0, 20, 10);
     appc.popMatrix();
   }

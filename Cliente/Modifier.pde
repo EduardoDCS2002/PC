@@ -1,31 +1,22 @@
 class Modifier {
   float x;
   float y;
-  int type;
+  float radius;
+  int r,g,b;
 
   // Construtor
-  Modifier(float x, float y, int type) {
+  Modifier(float x, float y, float raio, int R, int G, int B) {
     this.x = x;
     this.y = y;
-    // 0-> verde, 1 -> laranka, 2-> azul , 3-> vermelho
-    this.type = type;
+    this.radius = raio;
+    this.r = R;
+    this.g = G;
+    this.b = B;
   }
 
   // Método para desenhar o planeta
   void display(PApplet appc) {
-    
-    if(type == 0){
-      appc.fill(0,200,0);
-    }
-    else if (type == 1){
-      appc.fill(204,102,0);
-    }
-    else if (type == 2){
-      appc.fill(0,0,200);
-    }
-    else {
-      appc.fill(200,0,0);
-    }
-    appc.ellipse(x, y, 3, 3);
+    appc.fill(r,g,b);
+    appc.ellipse(x, y, radius, radius);
   }
 }

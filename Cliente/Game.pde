@@ -9,11 +9,14 @@ class Game {
   ArrayList<Shooter> players;
   ArrayList<Modifier> modifiers;
   ArrayList<Bullet> bullets;
+  ArrayList<String> playerNames;
+  ArrayList<Integer> playerColors;
   Lock l;
 
-  public Game (ArrayList<Shooter> players, ArrayList<Bullet> bullet, ArrayList<Modifier> modifiers) {
+  public Game (ArrayList<Shooter> players, ArrayList<Bullet> bullets, ArrayList<Modifier> modifiers) {
       this.players  = players;
       this.modifiers = modifiers;
+      //pode ser que aqui os bullets inicie null idk ?
       this.bullets= bullets;
       this.l = new ReentrantLock();
   }
@@ -24,7 +27,7 @@ class Game {
     //println("Teste UPDATE");
     try {
       this.players  = players;
-      ArrayList<Bullet> bullets = bullets;
+      this.bullets = bullets;
       this.modifiers = modifiers;
     }finally{
       this.l.unlock();
@@ -40,6 +43,7 @@ class Game {
     int margin = 35; // Margem a partir da borda
     int lineHeight = 35; // Altura da linha
     int y = margin; // Iniciar a partir da margem superior
+    //se isto for so inicial tirar os bullets 
     for (Bullet b : this.bullets){
       b.display(appc);
     }

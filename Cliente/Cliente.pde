@@ -4,6 +4,8 @@ import java.lang.*;
 import java.util.StringTokenizer;
 import java.awt.Font;
 import java.io.FileReader;
+//import para ter os buttons do mouse, is it wrong ? idk xd
+import java.awt.event.MouseEvent;
 
 GTextArea server_connection_label; // log
 GLabel titulo_label; // titulo
@@ -50,9 +52,8 @@ boolean apresentarPontos = false;
 int i = 0;
 int f = 0;
 int conta = 0;
-
-Game jogo = new Game(new ArrayList<Shooter>(), new ArrayList<Modifier>(), new ArrayList<Bullet>());
-Conector con = new Conector();
+Game jogo = new Game(new ArrayList<Shooter>(), new ArrayList<Bullet>(), new ArrayList<Modifier>());
+Connector con = new Connector();
 
 HashMap<String, Integer> MelhoresPontuacoes = new HashMap<String, Integer>();
 
@@ -83,19 +84,18 @@ public void fecha_ranking_window(GWindow window) {
 
 void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
 
-//angle = atan2(appc.mouseY - rectY, appc.mouseX - rectX);
  if (appc.keyPressed) {
    String command = "";
-   if(appc.keyCode == LEFT || appc.key == "a"){
+   if(appc.keyCode == LEFT || appc.key == 'a' || appc.key == 'A'){
      command = "L\n";
    }
-   if(appc.keyCode == UP || appc.key == "w"){
+   if(appc.keyCode == UP || appc.key == 'w' || appc.key == 'W'){
      command = "U\n";
    }
-   if(appc.keyCode == RIGHT || appc.key == "d"){
+   if(appc.keyCode == RIGHT || appc.key == 'd' || appc.key == 'D'){
      command = "R\n";
    }
-   if(appc.keyCode == DOWN || appc.key == "s"){
+   if(appc.keyCode == DOWN || appc.key == 's' || appc.key == 'S'){
      command = "D\n";
    }
    
@@ -107,7 +107,7 @@ void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
 }
 
 void mousePressed_Handler(PApplet appc, GWinData data, MouseEvent event) {
-  if (appc.getButton() == LEFT) {
+  if (event.getButton() == MouseEvent.BUTTON1 ) {
     // Calcular direção normalizada
     float dx = appc.mouseX;
     float dy = appc.mouseY;
@@ -147,17 +147,17 @@ public void menu() {
 
   titulo_label = new GLabel(this, 300, 10, 700, 60);
   titulo_label.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
-  titulo_label.setText("PROGRAMAÇÃO CONCORRENTE 2023/2024");
+  titulo_label.setText("PROGRAMAÇÃO CONCORRENTE 2024/2025");
   titulo_label.setOpaque(false);
 
   titulo_label = new GLabel(this, 300, 40, 700, 60);
   titulo_label.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
-  titulo_label.setText("Gravidade");
+  titulo_label.setText("ShootingTime");
   titulo_label.setOpaque(false);
   
   titulo_label = new GLabel(this, 300, 60, 700, 120);
   titulo_label.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
-  titulo_label.setText("Bem-vindo ao Jogo da Gravidade! Tens a opção de registo, login e de cancelar um registo. Quando realizares o login, irás ser colocado no lobby então espere alguns segundos até a partida começar");
+  titulo_label.setText("Bem-vindo ao Jogo ShootingTime! Tens a opção de registo, login e de cancelar um registo. Quando realizares o login, irás ser colocado no lobby então espere alguns segundos até a partida começar");
   titulo_label.setOpaque(false);
   
   int buttonWidth = 300;
@@ -599,7 +599,7 @@ public synchronized void updateJogo(String res) {
 
     int numJogadores = new Integer(stk.nextToken()).intValue();
 
-    ArrayList<Astronaut> jogadores = new ArrayList<Astronaut>();
+    ArrayList<Shooter> jogadores = new ArrayList<Shooter>();
     HashMap<String, Integer> pontos = new HashMap<String, Integer>();    
 
     for (int i = 0; i < numJogadores; i++) {
@@ -608,29 +608,44 @@ public synchronized void updateJogo(String res) {
       float posX = new Float(stk.nextToken()).floatValue();
       float posY = new Float(stk.nextToken()).floatValue();
       int col = new Integer(stk.nextToken()).intValue();
-      float boost = new Float(stk.nextToken()).floatValue();
 
       
-      Astronaut a = new Astronaut (nome, posX, posY,col,boost);
-      jogadores.add(a);
+      Shooter s = new Shooter (nome, posX, posY,col);
+      jogadores.add(s);
     }
 
-    ArrayList<Planet> planetas = new ArrayList<Planet>();
+    ArrayList<Modifier> modifiers = new ArrayList<Modifier>();
 
-    int numPlanets = new Integer(stk.nextToken()).intValue();
+    int numModifier = new Integer(stk.nextToken()).intValue();
 
-    for (int i = 0; i < numPlanets; i++) {
+    for (int i = 0; i < numModifier; i++) {
 
       float posX = new Float(stk.nextToken()).floatValue();
       float posY = new Float(stk.nextToken()).floatValue();
       float Radius = new Float(stk.nextToken()).floatValue();
-      int col = new Integer(stk.nextToken()).intValue();;
+      int r = new Integer(stk.nextToken()).intValue();
+      int g = new Integer(stk.nextToken()).intValue();
+      int b = new Integer(stk.nextToken()).intValue();
 
-      Planet p = new Planet (posX, posY, Radius,col);
-      planetas.add(p);
+      Modifier m = new Modifier (posX, posY, Radius,r,g,b);
+      modifiers.add(m);
     }
     
-    jogo.update (jogadores, planetas);
+    ArrayList<Bullet> bullets = new ArrayList<Bullet>();
+
+    int numBullet = new Integer(stk.nextToken()).intValue();
+
+    for (int i = 0; i < numBullet; i++) {
+
+      float posX = new Float(stk.nextToken()).floatValue();
+      float posY = new Float(stk.nextToken()).floatValue();
+      float Radius = new Float(stk.nextToken()).floatValue();
+
+      Bullet b = new Bullet (posX, posY, Radius);
+      bullets.add(b);
+    }
+    
+    jogo.update (jogadores, bullets, modifiers);
     
   }
   }
