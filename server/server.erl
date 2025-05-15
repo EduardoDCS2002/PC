@@ -19,9 +19,8 @@ start() ->
     end,
 
     % Start login_manager with monitoring
-    LoginManagerPid = spawn(fun() -> login_manager:start_Login_Manager(LoginMap) end),
-    register(login_manager, LoginManagerPid),
-    erlang:monitor(process, LoginManagerPid),
+    {ok, Pid} = login_manager:start_link(LoginMap),
+    erlang:monitor(process, Pid),
 
     % TCP setup with error handling
     Port = 22346,
@@ -69,7 +68,8 @@ parse_command(Data) ->
 
 parse_credentials([], _Cmd) -> {error, <<"Missing credentials\n">>};
 parse_credentials([UserPass], Cmd) ->
-    case string:split(UserPass, ":", trailing) of
+    %io:format("~s~n", UserPass),
+    case string:split(UserPass, " ", trailing) of
         [User, Pass] -> {ok, Cmd, string:trim(User), string:trim(Pass)};
         _ -> {error, <<"Format: COMMAND USER:PASS\n">>}
     end.
@@ -84,9 +84,11 @@ handle_command(Sock, "login", User, Pass) ->
             gen_tcp:send(Sock, <<"Login failed\n">>)
     end;
 handle_command(Sock, "create_account", User, Pass) ->
+    %io:format("~s ~s~n", User, Pass),
     case create_account(User, Pass) of
         ok -> gen_tcp:send(Sock, <<"Account created\n">>);
-        _ -> gen_tcp:send(Sock, <<"Account exists\n">>)
+        bad_arguments -> gen_tcp:send(Sock, <<"Bad arguments">>);
+        account_exists -> gen_tcp:send(Sock, <<"Account exists\n">>)
     end;
 handle_command(Sock, "close_account", User, Pass) ->
     case close_account(User, Pass) of

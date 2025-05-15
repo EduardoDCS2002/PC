@@ -71,11 +71,11 @@ ondEstaJogador([{Pid,[X|Y]}|T],UserProcess) ->
 %Se estiver entao vai para a sala seguinte 
 
 verificaSala([H|T]) -> 
-    {Pid,ListaJogadores} = H, 
+    {_,ListaJogadores} = H, 
 
     if length(ListaJogadores) < 2 -> 
         H;
-    true -> 
+        length(ListaJogadores) == 2 -> 
         verificaSala(T)
     end.
 

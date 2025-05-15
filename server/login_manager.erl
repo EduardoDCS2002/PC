@@ -1,20 +1,40 @@
 -module(login_manager).
--export([start_Login_Manager/1, create_account/2, close_account/2, login/2, logout/1, 
-         mapa_para_string/1, maps_para_string/1, booleanoString/1,
+-export([start_link/1, init/1, call/1, 
+         create_account/2, close_account/2, login/2, logout/1,
          update_loss/1, update_win/1]).
+
+
+start_link(Map) ->
+    Pid = spawn_link(?MODULE, init, [Map]),
+    register(login_manager, Pid),
+    {ok, Pid}.
+
+init(Map) ->
+    process_flag(trap_exit, true),
+    io:format("Login manager started~n"),
+    loop(Map).
+
+call(Request) ->
+    try
+        case whereis(login_manager) of
+            undefined -> 
+                {error, service_unavailable};
+            Pid when is_pid(Pid) ->
+                login_manager ! {Request, self()},
+                receive 
+                    Res -> Res
+                after 5000 ->  % 5 second timeout
+                    {error, timeout}
+                end
+        end
+    catch
+        _:_ -> {error, call_failed}
+    end.
 
 % Atomic file save helper
 save_map(Map) ->
     Data = maps_para_string(maps:to_list(Map)),
     file:write_file("Logins.txt", Data, [write]).
-
-start_Login_Manager(Mapa) ->
-    Pid = spawn(fun() -> loop(Mapa) end),
-    register(login_manager, Pid).
-
-call(Request) ->
-    login_manager ! {Request, self()},
-    receive Res -> Res end.
 
 update_loss(Username) -> call({update_loss, Username}).
 update_win(Username) -> call({update_win, Username}).
@@ -38,17 +58,18 @@ maps_para_string([H|T]) -> mapa_para_string(H) ++ "\n" ++ maps_para_string(T).
 loop(Map) ->
     receive
         {{create_account, Username, Pass}, From} ->
+            io:format("Entrou no create account do loop~n"),
             case maps:find(Username, Map) of
-                error when Username =:= "" orelse Pass =:= "" ->
-                    From ! bad_arguments,
-                    loop(Map);
                 error ->
                     From ! ok,
                     NewMap = maps:put(Username, {Pass, false, 0, 0, 1}, Map),
                     save_map(NewMap),
                     loop(NewMap);
-                _ ->
-                    From ! invalid,
+                error when Username =:= "" orelse Pass =:= "" ->
+                    From ! bad_arguments,
+                    loop(Map);
+                {ok, _} ->
+                    From ! account_exists,
                     loop(Map)
             end;
 
@@ -120,5 +141,14 @@ loop(Map) ->
                 _ ->
                     From ! invalid,
                     loop(Map)
-            end
+            end;
+        {'DOWN', _Ref, process, _Pid, Reason} ->
+            error_logger:error_msg("Login manager detected process death: ~p~n", [Reason]),
+            start_link(Map);  % Restart ourselves
+
+        %% Handle exit signals
+        {'EXIT', _Pid, Reason} ->
+            error_logger:error_msg("Login manager exiting: ~p~n", [Reason]),
+            save_map(Map),  % Ensure data is saved
+            exit(Reason)
     end.
