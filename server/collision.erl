@@ -15,10 +15,10 @@ borda({{{X, Y}, _, _}, _}) ->
     X < 0 orelse X > ?SCREEN_WIDTH orelse 
     Y < 0 orelse Y > ?SCREEN_HEIGHT.
 
-collision_modifier({{PosPlay, _, _}, _}, {PosMod, RadiusMod, _, _}) ->
+collision_modifier({{_,PosPlay, _, _, _, _}, _}, {PosMod, RadiusMod, _, _}) ->
     distance(PosPlay, PosMod) =< (?PLAYER_RADIUS + RadiusMod).
 
-collision_bullet({{PosPlay, _, _}, _}, {PosBul, _, RadiusBul, _}) ->
+collision_bullet({{_,PosPlay, _, _, _, _}, _}, {PosBul, _, RadiusBul, _}) ->
     distance(PosPlay, PosBul) =< (?PLAYER_RADIUS + RadiusBul).
 
 check_collisions_modifiers(Players, Modifiers) ->

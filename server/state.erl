@@ -1,5 +1,6 @@
 -module (state).
--export ([start_state/0, update/1]).
+-export ([start_state/0, update/1, handle_modifier_collisions/1, handle_bullet_collisions/2,
+    handle_bordas/2]).
 -import(modifier, [new_modifier/0, update_modifiers/1, remove_modifier/2]).
 -import(player, [newPlayer/0, update_player_position/2]).
 -import(collision, [check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, 
@@ -191,7 +192,7 @@ gameManager(Estado)->
         
 
         %Recebe os argumentos de movimentação e atualiza a posição dos jogadores
-        {movePlayer, Data, From} ->
+        {Coordenadas, Data, From} ->
             {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
 
             % Encontrar e atualizar o jogador

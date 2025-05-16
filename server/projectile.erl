@@ -16,7 +16,8 @@ new_projectile({PlayerX, PlayerY}, {CursorX, CursorY}, BulletSpeed) ->
     Angle = math:atan2(Dy, Dx),
     Vx = ?PROJECTILE_SPEED + BulletSpeed * math:cos(Angle),
     Vy = ?PROJECTILE_SPEED + BulletSpeed * math:sin(Angle),
-    {{PlayerX, PlayerY}, {Vx, Vy}, ?PROJECTILE_RADIUS, erlang:system_time(millisecond)}.
+    T = erlang:system_time(millisecond),
+    {{PlayerX, PlayerY}, {Vx, Vy}, ?PROJECTILE_RADIUS, T}.
 
 filter_out_of_bounds(Projectiles) ->
     [P || P = {{X, Y}, _, _, _} <- Projectiles,
