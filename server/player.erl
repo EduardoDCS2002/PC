@@ -123,4 +123,3 @@ update_player_score({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, ChangedSc
 
     NewScore = Score + ChangedScore,
     {{IdP, Pos, Vel, Color, NewScore, BS, BR}, UserData}.
-

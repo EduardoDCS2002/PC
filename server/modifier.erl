@@ -3,7 +3,7 @@
 
 -define(SPAWN_PROBABILITY, 0.05).  % 5% spawn chance per tick
 -define(MAX_PER_TYPE, 3).
--define(MODIFIER_RADIUS, 50.0).
+-define(MODIFIER_RADIUS, 20.0).
 -define(SCREEN_WIDTH, 1300).       % screen bounds
 -define(SCREEN_HEIGHT, 700).
 

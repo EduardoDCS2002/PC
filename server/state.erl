@@ -44,8 +44,11 @@ lounge(Salas) ->
 
             lounge([NovoSala | NovasSalas]);
 
-        {leave, Username, UserProcess}  ->                                            
-            ondEstaJogador(Salas,UserProcess) ! {leave,Username,UserProcess},
+        {leave, Username, UserProcess}  ->
+            {OkOrError, Pid} = ondEstaJogador(Salas,UserProcess),                                            
+            if OkOrError == ok -> 
+                Pid ! {leave,Username,UserProcess}
+            end,
             lounge(Salas)
     end. 
 
@@ -54,26 +57,21 @@ remove(X, L) ->
 
 
 %Encontra o Jogador na sala onde ele se encontra
-ondEstaJogador([], UserProcess) -> []; 
+ondEstaJogador([], _) -> {error, not_found}; 
 
-ondEstaJogador([{Pid,[X|Y]}|T],UserProcess) -> 
-    {User,Process} = X, 
-
-    if Process == UserProcess ->
-        Pid;
-    true -> 
-        if length(Y) == 0 -> 
-            ondEstaJogador([T],UserProcess);
-        true-> 
-            ondEstaJogador([{Pid,Y}|T],UserProcess)
-        end
+ondEstaJogador([{Pid, Players}|T], UserProcess) ->
+    case lists:keyfind(UserProcess, 2, Players) of
+        {_Name, UserProcess} -> 
+            {ok, Pid};  % Found the player
+        false ->
+            ondEstaJogador(T, UserProcess)  % Continue searching
     end.
 
 %Verifica se a sala esta cheia ou nao 
 %Se estiver entao vai para a sala seguinte 
 
 verificaSala([H|T]) -> 
-    {Pid,ListaJogadores} = H, 
+    {_,ListaJogadores} = H, 
 
     if length(ListaJogadores) < 1 -> 
         H;
@@ -112,7 +110,7 @@ esperar_jogadores(Espera_Jogadores, TimerRef) ->
 
 
 estado(Atuais_Jogadores, Espera_Jogadores) ->
-    io:format("Entrei no estado ~n"),
+    io:format("Sala criada. ~n"),
     receive
         {ready, Username, UserProcess} ->
             io:format("len ~p ~n", [length(Espera_Jogadores)]),
@@ -126,22 +124,21 @@ estado(Atuais_Jogadores, Espera_Jogadores) ->
                     io:format("Recebi ready do User ~p e vou adicionar-lo ao jogo ~n", [Username]),
                     Espera_JogadoresAux = Espera_Jogadores ++ [{Username, UserProcess}],
                     [JogadorPid ! {comeca, game} || {_, JogadorPid} <- Espera_JogadoresAux],
-                    [game ! {geraJogador, {Username, UserProcess}} || {Username, UserProcess} <- Espera_JogadoresAux],
+                    [game ! {geraJogador, {UsernameEspera, UserProcessEspera}} || {UsernameEspera, UserProcessEspera} <- Espera_JogadoresAux],
                     estado(Espera_JogadoresAux, [])
             end;
 
         {leave, Username, UserProcess} ->
-            io:format("Recebi leave do User ~p ~n", [Username]),
+            io:format("User leaving:  ~p ~n", [Username]),
             case length(Espera_Jogadores) of
                 0 ->
                     Lista = Atuais_Jogadores -- [{Username, UserProcess}],
-                    io:format("CASE 0 - A lista de jogadores ativos atuais ~p ~n", [Lista]),
+                    io:format("Jogadores ativos ~p ~n", [Lista]),
                     estado(Lista, Espera_Jogadores);
                 _ ->
-                    io:format("A lista de jogadores ativos atuais ~p ~n", [Atuais_Jogadores]),
-                    io:format("Vou tirar o ~p da lista ~n", [{Username, UserProcess}]),
                     Lista = Atuais_Jogadores -- [{Username, UserProcess}],
-                    io:format("Lista jogador removido ~p ~n", [Lista]),
+                    io:format("Jogadores ativos ~p ~n", [Lista]),
+                    io:format("Jogadores em queue ~p ~n", [Espera_Jogadores]),
                     if
                         length(Espera_Jogadores) > 0 ->
                             [H | T] = Espera_Jogadores,
@@ -162,7 +159,7 @@ novoEstado() ->
     %player, modifiers, bullets, screensize
     StartTime = erlang:monotonic_time(millisecond),
     State = {[], [],[], {1300,700}, StartTime},
-    io:fwrite("Estado novo Gerado.~n"),
+    io:fwrite("Estado de jogo gerado.~n"),
     State.
 
 adicionaJogador(Estado,Jogador) ->
@@ -185,6 +182,7 @@ removeJogador(Estado,Jogador) ->
 
 %Controla tudo o que se passa no jogo 
 gameManager(Estado)->
+    %io:format("chamou o gameManager~n"),
     receive
         {geraJogador, From} ->
             io:format("Gerar jogador~n"),   
@@ -192,7 +190,7 @@ gameManager(Estado)->
         
 
         %Recebe os argumentos de movimentação e atualiza a posição dos jogadores
-        {Coordenadas, Data, From} ->
+        {keyPressed, Data, From} ->
             {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
 
             % Encontrar e atualizar o jogador
@@ -237,10 +235,10 @@ gameManager(Estado)->
             gameManager(NovoEstado);
 
         {refresh, _} ->
-
+            %io:format("fez refersh~n"),
             NovoEstado = update(Estado),
             {ListaJogadores,_, _, _, _} = Estado,
-            Pids = [Pid || {_, {User, Pid}} <- ListaJogadores ],
+            Pids = [Pid || {_, {_, Pid}} <- ListaJogadores ],
             [ H ! {line,formatState(NovoEstado)} || H <- Pids],
             gameManager(NovoEstado);
 
@@ -249,7 +247,7 @@ gameManager(Estado)->
             {ListaJogadores, _ , _, _, _} = Estado,
             if
                 length(ListaJogadores) == 1->
-                    [H|T] = ListaJogadores,
+                    [H|_] = ListaJogadores,
                     {_, {_, Pid1}} = H,
                     if
                         Pid1 == From ->
@@ -258,7 +256,7 @@ gameManager(Estado)->
                             gameManager(Estado)
                     end;
                 length(ListaJogadores) == 2 ->
-                    [H1,H2 | T] = ListaJogadores,
+                    [H1,H2 | _] = ListaJogadores,
                     {_, {_, Pid1}} = H1,
                     {_, {_, Pid2}} = H2,
                     if

@@ -151,7 +151,7 @@ user(Sock, Username) ->
 cicloJogo(Sock, Username, GameManager) -> 
     receive
         {line, Data} -> % line é dados do game manager
-            %io:format("ENVIEI ESTES DADOS~p~n",[Data]),
+            io:format("ENVIEI ESTES DADOS~p para o ~p~n",[Data, Username]),
             gen_tcp:send(Sock, Data),
             cicloJogo(Sock, Username, GameManager);
         {tcp, _, Data} -> % Recebemos alguma coisa do socket (Cliente), enviamos para o GameManager
@@ -163,7 +163,7 @@ cicloJogo(Sock, Username, GameManager) ->
                     logout(Username),
                     authenticator(Sock);
                 _ ->
-                    %io:format("RECEBI ESTES DADOS~p~n",[Data]),
+                    io:format("RECEBI ESTES DADOS~p~n",[Data]),
                     GameManager ! {keyPressed, Data, self()},
                     cicloJogo(Sock, Username, GameManager)
             end;
