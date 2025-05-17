@@ -50,7 +50,9 @@ update_player_decay(Jogador)->
         BS == ?BASEBULLETSPEED, BR > ?BASEBULLETRELOAD ->
             NewBS = BS,
             NewBR = BR - ?DECAYBULLETRELOAD;
-        true -> Player % fallback seguro
+        true -> 
+            NewBS = BS,
+            NewBR = BR % fallback seguro
 
     end,
     {{IdP, Pos, Vel, Color, Score, NewBS, NewBR}, UserData}.
