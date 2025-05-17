@@ -4,7 +4,6 @@ import java.lang.*;
 import java.util.StringTokenizer;
 import java.awt.Font;
 import java.io.FileReader;
-//import para ter os buttons do mouse, is it wrong ? idk xd
 import java.awt.event.MouseEvent;
 
 GTextArea server_connection_label; // log
@@ -52,7 +51,8 @@ boolean apresentarPontos = false;
 int i = 0;
 int f = 0;
 int conta = 0;
-Game jogo = new Game(new ArrayList<Shooter>(), new ArrayList<Bullet>(), new ArrayList<Modifier>());
+
+Game jogo = new Game(new ArrayList<Shooter>(), new ArrayList<Modifier>(), new ArrayList<Bullet>());
 Connector con = new Connector();
 
 HashMap<String, Integer> MelhoresPontuacoes = new HashMap<String, Integer>();
@@ -106,13 +106,12 @@ void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
   }
 }
 
+//esta a dar mal idk why
 void mousePressed_Handler(PApplet appc, GWinData data, MouseEvent event) {
+  println("mousePressed_Handler chamado");
   if (event.getButton() == MouseEvent.BUTTON1 ) {
-    // Calcular direção normalizada
-    float dx = appc.mouseX;
-    float dy = appc.mouseY;
 
-    String command = "SHOOT " + dx + " " + dy + "\n";
+    String command = "SHOOT " + appc.mouseX + " " + appc.mouseY + "\n";
     println(command);
     con.write(command);  // Envia comando para o servidor
   }
@@ -129,7 +128,7 @@ public void draw() {
 public void menu() {
    //ipLido = "192.168.1.69";
    ipLido = "localhost";
-   portaLida = "22346"; 
+   portaLida = "22345"; 
    boolean ok = con.connect(ipLido, Integer.parseInt(portaLida));  
 
   this.noLoop();
@@ -147,7 +146,7 @@ public void menu() {
 
   titulo_label = new GLabel(this, 300, 10, 700, 60);
   titulo_label.setTextAlign(GAlign.CENTER, GAlign.MIDDLE);
-  titulo_label.setText("PROGRAMAÇÃO CONCORRENTE 2024/2025");
+  titulo_label.setText("SHOOTING GAME");
   titulo_label.setOpaque(false);
 
   titulo_label = new GLabel(this, 300, 40, 700, 60);
@@ -339,7 +338,7 @@ public void criaJogoWindow() {
   jogo_window = null;
   jogo_window = GWindow.getWindow(this, "Jogo", 0, 0, 1300, 700, JAVA2D);
   jogo_window.addKeyHandler(this, "keyPressed_Handler");
-  jogo_window.addKeyHandler(this, "mousePressed_Handler");
+  //jogo_window.addMouseHandler(this, "mousePressed_Handler");
   
 
   jogo_window.setActionOnClose(G4P.CLOSE_WINDOW);
@@ -385,7 +384,7 @@ public void concluir_login_button_click(GButton source, GEvent event) {
           //println("a\n");
           String estadoLido = con.read();
 
-          //println(estadoLido);
+          println(estadoLido);
 
           if (estadoLido.equals("Perdeu") ) {
             perdeu_label = new GLabel(jogo_window, 0, 100, 1300, 400);
@@ -475,7 +474,7 @@ public void drawRanking(PApplet appc, GWinData data) {
 
 private List<Player> loadPlayersFromLoginsFile() {
     List<Player> players = new ArrayList<>();
-    String filePath = "C:/Users/paulo/OneDrive/Ambiente de Trabalho/PC/Projeto/PC - Projecto - Grupo 13/Servidor/Logins.txt";
+    String filePath = "C:/Users/franc/OneDrive/Desktop/Pc2025/server/Logins.txt";
 
     try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
         String line;
@@ -597,7 +596,7 @@ public synchronized void updateJogo(String res) {
     
   } else {
 
-    int numJogadores = new Integer(stk.nextToken()).intValue();
+    int numJogadores = Integer.parseInt(stk.nextToken());
 
     ArrayList<Shooter> jogadores = new ArrayList<Shooter>();
     HashMap<String, Integer> pontos = new HashMap<String, Integer>();    
@@ -605,9 +604,9 @@ public synchronized void updateJogo(String res) {
     for (int i = 0; i < numJogadores; i++) {
 
       String nome = new String(stk.nextToken());
-      float posX = new Float(stk.nextToken()).floatValue();
-      float posY = new Float(stk.nextToken()).floatValue();
-      int col = new Integer(stk.nextToken()).intValue();
+      float posX = Float.parseFloat(stk.nextToken());
+      float posY = Float.parseFloat(stk.nextToken());
+      int col = Integer.parseInt(stk.nextToken());
 
       
       Shooter s = new Shooter (nome, posX, posY,col);
@@ -616,16 +615,16 @@ public synchronized void updateJogo(String res) {
 
     ArrayList<Modifier> modifiers = new ArrayList<Modifier>();
 
-    int numModifier = new Integer(stk.nextToken()).intValue();
+    int numModifier = Integer.parseInt(stk.nextToken());
 
     for (int i = 0; i < numModifier; i++) {
 
-      float posX = new Float(stk.nextToken()).floatValue();
-      float posY = new Float(stk.nextToken()).floatValue();
-      float Radius = new Float(stk.nextToken()).floatValue();
-      int r = new Integer(stk.nextToken()).intValue();
-      int g = new Integer(stk.nextToken()).intValue();
-      int b = new Integer(stk.nextToken()).intValue();
+      float posX = Float.parseFloat(stk.nextToken());
+      float posY = Float.parseFloat(stk.nextToken());
+      float Radius = Float.parseFloat(stk.nextToken());
+      int r = Integer.parseInt(stk.nextToken());
+      int g = Integer.parseInt(stk.nextToken());
+      int b = Integer.parseInt(stk.nextToken());
 
       Modifier m = new Modifier (posX, posY, Radius,r,g,b);
       modifiers.add(m);
@@ -633,19 +632,19 @@ public synchronized void updateJogo(String res) {
     
     ArrayList<Bullet> bullets = new ArrayList<Bullet>();
 
-    int numBullet = new Integer(stk.nextToken()).intValue();
+    int numBullet = Integer.parseInt(stk.nextToken());
 
     for (int i = 0; i < numBullet; i++) {
 
-      float posX = new Float(stk.nextToken()).floatValue();
-      float posY = new Float(stk.nextToken()).floatValue();
-      float Radius = new Float(stk.nextToken()).floatValue();
+      float posX = Float.parseFloat(stk.nextToken());
+      float posY = Float.parseFloat(stk.nextToken());
+      float Radius = Float.parseFloat(stk.nextToken());
 
       Bullet b = new Bullet (posX, posY, Radius);
       bullets.add(b);
     }
     
-    jogo.update (jogadores, bullets, modifiers);
+    jogo.update (jogadores, modifiers, bullets);
     
   }
   }

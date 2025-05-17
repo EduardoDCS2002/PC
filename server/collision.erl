@@ -4,21 +4,20 @@
          check_colision_boards_players/1, %check_colision_boards_bullet/1,
          borda/1]).
 
--define(PLAYER_RADIUS, 20.0).
+-define(PLAYER_RADIUS, 40.0).
 -define(SCREEN_WIDTH, 1300).
 -define(SCREEN_HEIGHT, 700).
 
 distance({X1, Y1}, {X2, Y2}) ->
     math:sqrt(math:pow(X2 - X1, 2) + math:pow(Y2 - Y1, 2)).
 
-borda({{{X, Y}, _, _}, _}) ->
-    X < 0 orelse X > ?SCREEN_WIDTH orelse 
-    Y < 0 orelse Y > ?SCREEN_HEIGHT.
+borda({{_,{X,Y}, _, _, _, _, _},{_,_}} ) ->
+    X =< -650 + 1300/2 orelse X >= 650 + 1300/2  orelse Y =< -350 + 700/2 orelse Y >= 350 + 700/2.
 
-collision_modifier({{_,PosPlay, _, _, _, _}, _}, {PosMod, RadiusMod, _, _}) ->
+collision_modifier({{_,PosPlay, _, _, _, _, _}, _}, {PosMod, RadiusMod, _, _}) ->
     distance(PosPlay, PosMod) =< (?PLAYER_RADIUS + RadiusMod).
 
-collision_bullet({{_,PosPlay, _, _, _, _}, _}, {PosBul, _, RadiusBul, _}) ->
+collision_bullet({{_,PosPlay, _, _, _, _, _}, _}, {PosBul, _, RadiusBul, _}) ->
     distance(PosPlay, PosBul) =< (?PLAYER_RADIUS + RadiusBul).
 
 check_collisions_modifiers(Players, Modifiers) ->

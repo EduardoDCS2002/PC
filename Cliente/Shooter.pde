@@ -12,15 +12,11 @@ class Shooter {
     this.col = col;
   }
 
-  // Método para desenhar o astronauta
+  // Método para desenhar o shooter
   void display(PApplet appc) {
-    appc.fill(col,0,0);
-    appc.pushMatrix();
-    appc.translate(this.x, this.y);
-    appc.ellipse(0, 0, 20, 20);
-    //appc.rotate(radians(this.angle));
-    //rever se é necessario
-    appc.rect(20, 0, 20, 10);
-    appc.popMatrix();
+    
+    appc.fill(col,0,col);
+    appc.ellipse(x, y, 40 , 40);
+  
   }
 }

@@ -32,8 +32,8 @@ import java.net.Socket;
     
         
     public String read(){
-      String str; //<>// //<>// //<>// //<>//
-        try{ //<>// //<>// //<>// //<>//
+      String str; //<>// //<>// //<>//
+        try{ //<>// //<>// //<>//
           str = in.readLine();  
           //System.out.println("Read : " + str);
         } catch(Exception e)

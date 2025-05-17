@@ -14,7 +14,7 @@ class Bullet {
   // Método para desenhar a bala
   void display(PApplet appc) {
     
-    appc.fill(0,0,0);
+    appc.fill(255,255,255);
     appc.ellipse(x, y, raio, raio);
   }
 }

@@ -1,33 +1,51 @@
 -module(conversor).
--export([formatState/1]).
+-export([formatState/1, formataTecla/1]).
 
-%formataTecla( Data ) ->
-%    Key = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-%    Key.
+formataTecla( Data ) ->
+    Key = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
+    Key.
 
-% Convert player to string: "User X Y Color"
-jogador_para_string({{{X, Y}, _, Color}, U}) ->
-    io_lib:format("~s ~.3f ~.3f ~b", [U, X, Y, Color]).
+jogador_para_string(Jogador) ->
+    {{_,{X, Y}, _, Color, _, _, _},U} = Jogador,
+    Lista = [U,float_to_list(X, [{decimals, 3}]), float_to_list(Y, [{decimals, 3}]),integer_to_list(Color)],
+    string:join(Lista, " ").
 
-% Convert modifier to string: "X Y Radius R G B"
-modificador_para_string({{X, Y}, Radius, _, {R, G, B}}) ->
-    io_lib:format("~.3f ~.3f ~.3f ~b ~b ~b", [X, Y, Radius, R, G, B]).
+jogadores_para_string([]) -> "";
+jogadores_para_string([H]) -> jogador_para_string(H) ++ " ";
+jogadores_para_string([H|T]) -> jogador_para_string(H) ++ " " ++  jogadores_para_string(T).
 
-% Convert projectile to string: "X Y Radius"
-projectile_para_string({{X, Y}, _, Radius, _}) ->
-    io_lib:format("~.3f ~.3f ~.3f", [X, Y, Radius]).
 
-% Generic list-to-string converter
-list_to_string(_Converter, []) -> "";
-list_to_string(Converter, List) ->
-    string:join([Converter(Item) || Item <- List], " ").
+modificador_para_string(Modifier) ->
+    {{X, Y}, Radius, _, {R,G,B}} = Modifier,
+    Lista = [float_to_list(X, [{decimals, 3}]), float_to_list(Y, [{decimals, 3}]),float_to_list(Radius, [{decimals, 3}]),integer_to_list(R),integer_to_list(G),integer_to_list(B)],
+    string:join(Lista, " ").
+
+
+modificadores_para_string([]) -> "";
+modificadores_para_string([H]) -> modificador_para_string(H) ++ " ";
+modificadores_para_string([H|T]) -> modificador_para_string(H) ++ " " ++ modificadores_para_string(T).
+
+
+projectile_para_string(Bullet) ->
+    {{X, Y}, _, Radius, _} = Bullet,
+    Lista = [float_to_list(X, [{decimals, 3}]), float_to_list(Y, [{decimals, 3}]),float_to_list(Radius, [{decimals, 3}])],
+    string:join(Lista, " ").
+
+
+projectiles_para_string([]) -> "";
+projectiles_para_string([H]) -> projectile_para_string(H) ++ " ";
+projectiles_para_string([H|T]) -> projectile_para_string(H) ++ " " ++ projectiles_para_string(T).
+
 
 % Main state formatter
-formatState({Jogadores, Modificadores, Balas, _}) ->
-    JogadoresStr = list_to_string(fun jogador_para_string/1, Jogadores),
-    ModsStr = list_to_string(fun modificador_para_string/1, Modificadores),
-    BalasStr = list_to_string(fun projectile_para_string/1, Balas),
-    io_lib:format("Estado ~b ~s ~b ~s ~b ~s~n", 
-                 [length(Jogadores), JogadoresStr,
-                  length(Modificadores), ModsStr,
-                  length(Balas), BalasStr]).
+formatState (Estado) ->
+    {ListaJogadores,ListaModifiers,ListaBullets, _, _} = Estado,
+    Len1 = integer_to_list(length(ListaJogadores)) ++ " ",
+    L1 = [{J,U} || {J, {U,_}} <- ListaJogadores ],
+    R1 = jogadores_para_string(L1),
+    Len2 = integer_to_list(length(ListaModifiers)) ++ " ",
+    R2 = modificadores_para_string(ListaModifiers),
+    Len3 = integer_to_list(length(ListaBullets)) ++ " ",
+    R3 = projectiles_para_string(ListaBullets),
+    Resultado = "Estado " ++ Len1 ++ R1 ++ Len2 ++ R2++ Len3 ++ R3++"\n",
+    Resultado.

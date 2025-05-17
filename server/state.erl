@@ -1,13 +1,14 @@
 -module (state).
--export ([start_state/0, update/1, handle_modifier_collisions/1, handle_bullet_collisions/2,
-    handle_bordas/2]).
--import(modifier, [new_modifier/0, update_modifiers/1, remove_modifier/2]).
--import(player, [newPlayer/0, update_player_position/2]).
+-export ([start_state/0, update/1,adicionaJogador/2, handle_loss/2,handle_win/2,handle_bordas/2,handle_bullet_collisions/2,handle_modifier_collisions/1]).
+-import(modifier, [new_modifier/0, maybe_spawn_modifier/1, update_modifiers/1, remove_modifier/2]).
+-import(player, [newPlayer/1, update_player_decay/1, update_players_decay/1, 
+    update_player_reset/1, update_players_reset/1, update_player_position/2,
+    update_player_modifier/2, update_player_score/2 ]).
 -import(collision, [check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, 
          collision_modifier/2, collision_bullet/2,
-         check_colision_boards_players/1, check_colision_boards_bullet/1,
+         check_colision_boards_players/1, %check_colision_boards_bullet/1,
          borda/1]).
--import(projectile,[new_projectile/2, update_projectiles/1]).
+-import(projectile,[new_projectile/3, update_projectiles/1, update_projectile/1, filter_expired/1]).
 -import (timer, [send_after/3]).%% verificar o estado do jogo
 -import (conversor, [formatState/1, formataTecla/1]).
 
@@ -53,7 +54,7 @@ remove(X, L) ->
 
 
 %Encontra o Jogador na sala onde ele se encontra
-ondEstaJogador([], _) -> []; 
+ondEstaJogador([], UserProcess) -> []; 
 
 ondEstaJogador([{Pid,[X|Y]}|T],UserProcess) -> 
     {User,Process} = X, 
@@ -72,11 +73,11 @@ ondEstaJogador([{Pid,[X|Y]}|T],UserProcess) ->
 %Se estiver entao vai para a sala seguinte 
 
 verificaSala([H|T]) -> 
-    {_,ListaJogadores} = H, 
+    {Pid,ListaJogadores} = H, 
 
-    if length(ListaJogadores) < 2 -> 
+    if length(ListaJogadores) < 1 -> 
         H;
-        length(ListaJogadores) == 2 -> 
+    true ->
         verificaSala(T)
     end.
 
@@ -93,7 +94,7 @@ esperar_jogadores(Espera_Jogadores, TimerRef) ->
 
         {timeout} ->
             % Quando o tempo expira, inicia o jogo se houver jogadores suficientes
-            if length(Espera_Jogadores) == 2 ->
+            if length(Espera_Jogadores) == 1 ->
                 [JogadorPid ! {comeca, game} || {_, JogadorPid} <- Espera_Jogadores],
                 [game ! {geraJogador, {Username, UserProcess}} || {Username, UserProcess} <- Espera_Jogadores],
                 estado(Espera_Jogadores, []);
@@ -159,25 +160,26 @@ estado(Atuais_Jogadores, Espera_Jogadores) ->
 
 novoEstado() ->
     %player, modifiers, bullets, screensize
-    State = {[], [],[], {1300,700}},
+    StartTime = erlang:monotonic_time(millisecond),
+    State = {[], [],[], {1300,700}, StartTime},
     io:fwrite("Estado novo Gerado.~n"),
     State.
 
 adicionaJogador(Estado,Jogador) ->
-    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
+    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
     NovaListaJogadores=
         case length(ListaJogadores) of
             0 -> ListaJogadores ++ [{player:newPlayer(1), Jogador}];
-            1 -> ListaJogadores ++ [{player:newPlayer(2), Jogador}];
-            2 -> ListaJogadores
+            1 -> ListaJogadores ++ [{player:newPlayer(2), Jogador}]
+            %%2 -> ListaJogadores
         end,
-    State = { NovaListaJogadores , ListaModifiers, ListaBullets, TamanhoEcra},
+    State = { NovaListaJogadores , ListaModifiers, ListaBullets, TamanhoEcra, StartTime},
     io:fwrite("Estado: ~p ~n", [State]),
     State.
 
 removeJogador(Estado,Jogador) ->
-    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
-    State = { ListaJogadores -- [Jogador], ListaModifiers, ListaBullets, TamanhoEcra},
+    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
+    State = { ListaJogadores -- [Jogador], ListaModifiers, ListaBullets, TamanhoEcra, StartTime},
     io:fwrite("Estado com jogador removido: ~p ~n", [State]),
     State.
 
@@ -185,15 +187,13 @@ removeJogador(Estado,Jogador) ->
 gameManager(Estado)->
     receive
         {geraJogador, From} ->
-            io:format("Gerar jogador~n"),
-            %% Envia mensagem {game_over} após 2 minutos
-            timer:send_after(120000, self(), game_over),    
+            io:format("Gerar jogador~n"),   
             gameManager(adicionaJogador(Estado,From));
         
 
         %Recebe os argumentos de movimentação e atualiza a posição dos jogadores
         {Coordenadas, Data, From} ->
-            {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
+            {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
 
             % Encontrar e atualizar o jogador
             NovaListaJogadores = lists:map(
@@ -209,13 +209,13 @@ gameManager(Estado)->
                 ListaJogadores
             ),
 
-            NovoEstado = {NovaListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra},
+            NovoEstado = {NovaListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime},
 
             gameManager(NovoEstado);
 
         %Recebe os argumentos de shooting e cria the bullet
         {shoot, Data, From} ->
-            {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
+            {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
 
             % Criar a Bala
             BulletsCriadas = lists:filtermap(
@@ -232,21 +232,21 @@ gameManager(Estado)->
                 ListaJogadores
             ),
             NovaListaBullets = BulletsCriadas ++ ListaBullets,
-            NovoEstado = {ListaJogadores, ListaModifiers, NovaListaBullets, TamanhoEcra},
+            NovoEstado = {ListaJogadores, ListaModifiers, NovaListaBullets, TamanhoEcra, StartTime},
 
             gameManager(NovoEstado);
 
         {refresh, _} ->
 
             NovoEstado = update(Estado),
-            {ListaJogadores,_, _, _} = Estado,
+            {ListaJogadores,_, _, _, _} = Estado,
             Pids = [Pid || {_, {User, Pid}} <- ListaJogadores ],
             [ H ! {line,formatState(NovoEstado)} || H <- Pids],
             gameManager(NovoEstado);
 
        {leave, From} ->
             io:format("Alguem enviou leave~n"),
-            {ListaJogadores, _ , _, _} = Estado,
+            {ListaJogadores, _ , _, _, _} = Estado,
             if
                 length(ListaJogadores) == 1->
                     [H|T] = ListaJogadores,
@@ -277,7 +277,7 @@ gameManager(Estado)->
 
 %Verifica as colisoes, atualiza todos os objectos e verifica tambem se alguem ganhou ou perdeu 
 update(Estado) ->
-    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra} = Estado,
+    {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
     
     NewModifiers = modifier:update_modifiers(ListaModifiers),
     NewBullets = projectile:update_projectiles(ListaBullets),
@@ -293,40 +293,40 @@ update(Estado) ->
     CollisionsBorder = collision:check_colision_boards_players(PlayersAfterBullets),
     PlayersAfterBorders = handle_bordas(CollisionsBorder, PlayersAfterBullets),
 
-
     %%something is wrong here, penso que o fullyupdatePlayer tinha de ser o bullet collision
     %%FullyUpdatedPlayers = handle_player_collisions(CollisionsAstronauts,NewAstronauts),
     verify_victory(Estado),
-    {PlayersAfterBorders, NewModifiers, NewBullets, TamanhoEcra}.
+    {PlayersAfterBorders, NewModifiers, NewBullets, TamanhoEcra, StartTime}.
 
 %% still didnt finish
 verify_victory(Estado) ->
-    {ListaJogadores, _, _, _} = Estado,
+    {ListaJogadores, _, _, _, StartTime} = Estado,
+    CurrentTime = erlang:monotonic_time(millisecond),
+    TimeElapsed = CurrentTime - StartTime,
     %% passado 2 minutos
-    case length(ListaJogadores) of
-        1 ->
-            {ok, NewTimerRef} = timer:send_after(5000, self(), {timeout}),
-            receive
-                {timeout} ->
-                    if length(ListaJogadores) == 1 ->
-                        {_, {Username, Pid}} = hd(ListaJogadores),
-                        handle_win(Username, Pid),
-                        io:format("~p ganhou~n", [Username]),
-                        game ! {leave, Pid};
-                    true -> ok
-                    end
-            after 0 -> ok
+    if
+        TimeElapsed >= 120000 ->
+            case length(ListaJogadores) of
+                1 ->
+                    {_, {Username, Pid}} = hd(ListaJogadores),
+                    handle_win(Username, Pid),
+                    io:format("~p ganhou por tempo~n", [Username]),
+                    game ! {leave, Pid};
+                2 ->
+                    %% Check for score comparison
+                    [{P1, {U1, Pid1}}, {P2, {U2, Pid2}}] = ListaJogadores,
+                    S1 = player:get_score(P1),
+                    S2 = player:get_score(P2),
+                    case S1 > S2 of
+                        true -> handle_win(U1, Pid1), game ! {leave, Pid2};
+                        false when S2 > S1 -> handle_win(U2, Pid2), game ! {leave, Pid1};
+                        false -> ok %% empate
+                    end;
+                _ -> ok
             end;
-        _ ->
+        true ->
             ok
     end.
-
-handle_bordas([], Players) ->
-    Players;
-handle_bordas(PlayersCollided, AllPlayers) ->
-    NotChangedPlayers = [Player || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =:= IdP],
-    ChangedPlayers = [player:update_player_score(Player, 2) || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =/= IdP],
-    player:update_players_position_reset(NotChangedPlayers ++ ChangedPlayers).
 
 handle_loss(User,Pid) ->
     Pid ! {line,"Perdeu\n"},
@@ -337,6 +337,13 @@ handle_win(User,Pid) ->
     Pid ! {line,"Venceu\n"},
     login_manager:logout(User),
     login_manager:update_win(User).
+
+handle_bordas([], Players) ->
+    Players;
+handle_bordas(PlayersCollided, AllPlayers) ->
+    NotChangedPlayers = [Player || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =:= IdP],
+    ChangedPlayers = [player:update_player_score(Player, 2) || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =/= IdP],
+    player:update_players_position_reset(NotChangedPlayers ++ ChangedPlayers).
 
 handle_bullet_collisions([], Players) ->
     Players;
@@ -354,11 +361,11 @@ handle_modifier_collisions([{Player, Modifier} | Rest]) ->
     io:format("Colisão com um modificador ~p e ~p~n", [Player, Modifier]),
     [player:update_player_modifier(Player, Modifier) | handle_modifier_collisions(Rest)].
 
-handle_bordas([]) ->
-    [];
-handle_bordas([Player | Players]) -> % precisa de atualizar o score do Player e devolver o novo valor
-    {_,{U,Pid}} = Player,
-    io:format("O jogador ~p bateu na borda.~n",[Player]),
+%%handle_bordas([]) ->
+   %% [];
+%%handle_bordas([Player | Players]) -> % precisa de atualizar o score do Player e devolver o novo valor
+  %%  {_,{U,Pid}} = Player,
+    %%io:format("O jogador ~p bateu na borda.~n",[Player]),
     %%handle_loss(U,Pid),
     %%game ! {leave, Pid},
-    handle_bordas(Players).
+    %%handle_bordas(Players).

@@ -1,5 +1,7 @@
 -module(player).
--export([newPlayer/1, update_players_position_reset/1, update_player_position/2, update_player_modifier/2, update_player_score/2, update_player_decay/1, update_players_decay/1]).
+-export([newPlayer/1, update_player_decay/1, update_players_decay/1, 
+    update_player_reset/1, update_players_reset/1, update_player_position/2,
+    update_player_modifier/2, update_player_score/2 ]).
 -define(MAX_SPEED, 5.0).
 -define(ACCELERATION, 0.2).
 -define(BULLETCHANGESPEED, 2.0).
@@ -15,32 +17,17 @@ newPlayer(Id) ->
     Color = 50 + rand:uniform(205),
     Velocity = {0.0, 0.0},
     Position = case Id of
-        1 -> {float(rand:uniform(200)), float(rand:uniform(700))};         % Lado esquerdo
-        2 -> {float(1100 + rand:uniform(200)), float(rand:uniform(700))}   % Lado direito
+        1 -> {325.0, 350.0};         % Lado esquerdo
+        2 -> {975.0, 350.0}   % Lado direito
     end,
     Score = 0,
     BulletSpeed = 8.0,
     BulletReload = 4.0,
     {IdP, Position, Velocity, Color, Score, BulletSpeed, BulletReload}.
 
-
-%%% Traduz teclas em aceleração acumulada (é possivel que tenha de ser alterado para receber uma lista de teclas)
-movement_to_acceleration(Key) ->
-    case Key of
-        <<"U\n">> -> {0.0, -?ACCELERATION};
-        <<"D\n">> -> {0.0, ?ACCELERATION};
-        <<"L\n">> -> {-?ACCELERATION, 0.0};
-        <<"R\n">> -> {?ACCELERATION, 0.0};
-        _ -> {0.0, 0.0}
-    end.
-%%% Limita a velocidade máxima
-clamp(V, Max) when V > Max -> Max;
-clamp(V, Max) when V < -Max -> -Max;
-clamp(V, _) -> V.
-
-%%% Atualiza a posição do player com base nas teclas 
-
-update_player_decay({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData})->
+%%Vai atualizando os valores alterados pelos modificadores
+update_player_decay(Jogador)->
+    {{IdP, Pos, Vel, Color, Score, BS, BR}, UserData} = Jogador,
     if 
         BS > ?BASEBULLETSPEED , BR < ?BASEBULLETRELOAD ->
             NewBS = BS - ?DECAYBULLETSPEED,
@@ -62,24 +49,44 @@ update_player_decay({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData})->
             NewBR = BR;
         BS == ?BASEBULLETSPEED, BR > ?BASEBULLETRELOAD ->
             NewBS = BS,
-            NewBR = BR - ?DECAYBULLETRELOAD
+            NewBR = BR - ?DECAYBULLETRELOAD;
+        true -> Player % fallback seguro
+
     end,
     {{IdP, Pos, Vel, Color, Score, NewBS, NewBR}, UserData}.
 
+update_players_decay([])->
+    [];
+update_players_decay(Jogadores) ->
+    [update_player_decay(Jogador) || Jogador <- Jogadores].
 
-update_player_position_reset({{IdP, _, Vel, Color, Score, BS, BR}, UserData}) ->
+update_player_reset(Jogador) ->
+    {{IdP, _, Vel, Color, Score, BS, BR}, UserData} = Jogador,
     NewPos = case IdP of
         1 -> {float(rand:uniform(200)), float(rand:uniform(700))};         % Lado esquerdo
         2 -> {float(1100 + rand:uniform(200)), float(rand:uniform(700))}   % Lado direito
     end,
     {{IdP, NewPos, Vel, Color, Score, BS, BR}, UserData}.
 
-update_players_position_reset(Players) ->
-    [update_player_position_reset(Player) || Player <- Players].
+update_players_reset([])->
+    [];
+update_players_reset(Jogadores) ->
+    [update_player_reset(Jogador) || Jogador <- Jogadores].
+
+
+%%% Limita a velocidade máxima
+clamp(V, Max) when V > Max -> Max;
+clamp(V, Max) when V < -Max -> -Max;
+clamp(V, _) -> V.
 
 update_player_position({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, Key) ->
-
-    {Ax,Ay}= movement_to_acceleration(Key),
+    {Ax,Ay}= case Key of
+        <<"U\n">> -> {0.0, -?ACCELERATION};
+        <<"D\n">> -> {0.0, ?ACCELERATION};
+        <<"L\n">> -> {-?ACCELERATION, 0.0};
+        <<"R\n">> -> {?ACCELERATION, 0.0};
+        _ -> {0.0, 0.0}
+    end,
     {Vx, Vy} = Vel,
     NewVx = clamp(Vx + Ax, ?MAX_SPEED),
     NewVy = clamp(Vy + Ay, ?MAX_SPEED),
@@ -88,6 +95,7 @@ update_player_position({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, Key) -
     NewY = Y + NewVy,
     
     {{IdP, {NewX, NewY}, {NewVx, NewVy}, Color, Score, BS, BR}, UserData}.
+
 
 %%% Atualiza os buffs do player
 update_player_modifier({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, {_, _, Type, _}) ->
@@ -114,7 +122,3 @@ update_player_score({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, ChangedSc
     NewScore = Score + ChangedScore,
     {{IdP, Pos, Vel, Color, NewScore, BS, BR}, UserData}.
 
-update_players_decay([])->
-    [];
-update_players_decay(ListaJogadores) ->
-    [update_player_decay(Jogador) || Jogador <- ListaJogadores].

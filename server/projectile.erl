@@ -1,7 +1,7 @@
 -module(projectile).
--export([new_projectile/3, update_projectiles/1, filter_expired/1]).
+-export([new_projectile/3, update_projectiles/1, update_projectile/1, filter_expired/1]).
 
--define(PROJECTILE_RADIUS, 3).
+-define(PROJECTILE_RADIUS, 3.0).
 -define(PROJECTILE_SPEED, 8.0).  % Pixels per update
 -define(PROJECTILE_LIFESPAN_MS, 2000).
 -define(SCREEN_WIDTH, 1300).
@@ -24,12 +24,13 @@ filter_out_of_bounds(Projectiles) ->
            X >= 0, X =< ?SCREEN_WIDTH,
            Y >= 0, Y =< ?SCREEN_HEIGHT].
 
+update_projectile({{X, Y}, {Vx, Vy}, Radius, Timestamp}) ->
+    {{X + Vx, Y + Vy}, {Vx, Vy}, Radius, Timestamp}.
+
 update_projectiles(Projectiles) ->
     Projectiles_In_Bounds = filter_out_of_bounds(Projectiles),
     [update_projectile(Proj) || Proj <- Projectiles_In_Bounds].
 
-update_projectile({{X, Y}, {Vx, Vy}, Radius, Timestamp}) ->
-    {{X + Vx, Y + Vy}, {Vx, Vy}, Radius, Timestamp}.
 
 filter_expired(Projectiles) ->
     Now = erlang:system_time(millisecond),
