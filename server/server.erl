@@ -130,9 +130,11 @@ authenticator(Sock) ->
                     case file:read_file("Logins.txt") of
                         {ok, Binary} ->
                             String = binary_to_list(Binary),
-                            gen_tcp:send(Sock, String);
+                            gen_tcp:send(Sock, String),
+                            authenticator(Sock);
                         {error, Reason} ->
-                            gen_tcp:send(Sock, "ERROR: " ++ file:format_error(Reason))
+                            gen_tcp:send(Sock, "ERROR: " ++ file:format_error(Reason)),
+                            authenticator(Sock)
                     end;
 
                 _ ->
