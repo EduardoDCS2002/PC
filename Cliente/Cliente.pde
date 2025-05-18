@@ -87,16 +87,16 @@ void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
  if (appc.keyPressed) {
    String command = "";
    if(appc.keyCode == LEFT || appc.key == 'a' || appc.key == 'A'){
-     command = "L\n";
+     command = "L";
    }
    if(appc.keyCode == UP || appc.key == 'w' || appc.key == 'W'){
-     command = "U\n";
+     command = "U";
    }
    if(appc.keyCode == RIGHT || appc.key == 'd' || appc.key == 'D'){
-     command = "R\n";
+     command = "R";
    }
    if(appc.keyCode == DOWN || appc.key == 's' || appc.key == 'S'){
-     command = "D\n";
+     command = "D";
    }
    if(appc.keyCode == ' ' ){
      command = "bang" + " " + appc.mouseX + " " + appc.mouseY;

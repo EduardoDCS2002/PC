@@ -6,9 +6,9 @@
     update_player_modifier/2, update_player_score/2 ]).
 -import(collision, [check_collisions_modifiers/2, check_collisions_bullet/2, distance/2, 
          collision_modifier/2, collision_bullet/2,
-         check_colision_boards_players/1, %check_colision_boards_bullet/1,
+         check_colision_boards_players/1, check_colision_boards_bullets/1,
          borda/1]).
--import(projectile,[new_projectile/3, update_projectiles/1, update_projectile/1, filter_expired/1, remove_bullets/2]).
+-import(projectile,[new_projectile/3, update_projectiles/1, update_projectile/1, remove_bullets/2]).
 -import (timer, [send_after/3]).%% verificar o estado do jogo
 -import (conversor, [formatState/1, formataTecla/1]).
 
@@ -273,24 +273,46 @@ gameManager(Estado)->
             %lists:foreach(fun({_, {_, Pid}}) -> io:format("Comparar com Pid: ~p~n", [Pid]) end, ListaJogadores),
             %io:format("ListaJogadores:~n~p~n", [ListaJogadores]),
             % Criar a Bala
-            BulletsCriadas = lists:filtermap(
-                fun(Jogador) ->
-                    {{IdP, {X,Y}, V, S, C, BS, BR},{Username, Pid}} = Jogador,
+            TimeNow = erlang:monotonic_time(millisecond),
+
+            {UpdatedJogadores, BulletsCriadas} = lists:foldl(
+                fun(Jogador, {AccJogadores, AccBullets}) ->
+                    {{IdP, {X,Y}, V, S, C, BS, BR, NB}, {Username, Pid}} = Jogador,
                     case From of
                         Pid ->
-                            io:format("Match encontrado! Criar bala para jogador: ~p~n", [Username]),
-                            NovaBala = projectile:new_projectile({X, Y}, Pos, BS), % Data aqui deve ser {CursorX, CursorY}
-                            io:format("Nova bala criada: ~p~n", [NovaBala]),
-                            {true, NovaBala};
-                        (_) ->
-                            io:format("Ignorado jogador: ~p~n", [Username]),
-                            false% ignora jogadores diferentes
+                            TimeDiff = TimeNow - NB,
+                            ReloadTime = trunc(BR * 1000),
+
+                            if
+                                TimeDiff >= ReloadTime ->
+                                    io:format("Match encontrado! Criar bala para jogador: ~p~n", [Username]),
+                                    NovaBala = projectile:new_projectile({X, Y}, Pos, BS),
+
+                                    % Atualizar o jogador com novo NextBullet = TimeNow
+                                    JogadorAtualizado = {
+                                        {IdP, {X,Y}, V, S, C, BS, BR, TimeNow},
+                                        {Username, Pid}
+                                    },
+
+                                    {
+                                        [JogadorAtualizado | AccJogadores],
+                                        [NovaBala | AccBullets]
+                                    };
+                                true ->
+                                    io:format("Jogador ~p ainda a recarregar: ~p/~p~n", [Username, TimeDiff, ReloadTime]),
+                                    {[Jogador | AccJogadores], AccBullets}
+                            end;
+                        _ ->
+                            {[Jogador | AccJogadores], AccBullets}
                     end
                 end,
+                {[], []},
                 ListaJogadores
             ),
-            NovaListaBullets = BulletsCriadas ++ ListaBullets,
-            NovoEstado = {ListaJogadores, ListaModifiers, NovaListaBullets, TamanhoEcra, StartTime},
+
+            NovaListaBullets = lists:reverse(BulletsCriadas) ++ ListaBullets,
+            NovaListaJogadores = lists:reverse(UpdatedJogadores),
+            NovoEstado = {NovaListaJogadores, ListaModifiers, NovaListaBullets, TamanhoEcra, StartTime},
 
             gameManager(NovoEstado);
 
@@ -346,14 +368,17 @@ update(Estado) ->
     
     CollisionsBullets = collision:check_collisions_bullet(PlayersAfterModifiers, NewBullets),
     {PlayersAfterBullets,BulletsAfterCollisions} = handle_bullet_collisions( PlayersAfterModifiers, NewBullets, CollisionsBullets), 
+
+    CollisionsBulletsBorder = collision:check_colision_boards_bullets(BulletsAfterCollisions),
+    BulletsAfterBorders = handle_bordas_bullets_collisions(BulletsAfterCollisions, CollisionsBulletsBorder),
     
     CollisionsBorder = collision:check_colision_boards_players(PlayersAfterBullets),
     PlayersAfterBorders = handle_bordas_collisions(PlayersAfterBullets, CollisionsBorder),
 
     %verify_victory({PlayersAfterBorders, ModifiersAfterCollisions, BulletsAfterCollisions, TamanhoEcra, StartTime}),
-    verify_victory({PlayersAfterBorders, ModifiersAfterCollisions, BulletsAfterCollisions, TamanhoEcra, StartTime}),
+    verify_victory({PlayersAfterBorders, ModifiersAfterCollisions, BulletsAfterBorders, TamanhoEcra, StartTime}),
     %{PlayersAfterBorders, ModifiersAfterCollisions, BulletsAfterCollisions, TamanhoEcra, StartTime}.
-    {PlayersAfterBorders,ModifiersAfterCollisions, BulletsAfterCollisions, TamanhoEcra, StartTime}.
+    {PlayersAfterBorders,ModifiersAfterCollisions, BulletsAfterBorders, TamanhoEcra, StartTime}.
 
 %% still didnt finish
 verify_victory(Estado) ->
@@ -363,7 +388,7 @@ verify_victory(Estado) ->
     %% passado 2 minutos
     if
         TimeElapsed >= 120000 ->
-            [{{_, _, _, _, S1, _, _}, {U1, Pid1}}, {{_, _, _, _, S2, _, _}, {U2, Pid2}}] = ListaJogadores,
+            [{{_, _, _, _, S1, _, _,_}, {U1, Pid1}}, {{_, _, _, _, S2, _, _, _}, {U2, Pid2}}] = ListaJogadores,
             case S1 > S2 of
                 true ->
                     handle_win(U1, Pid1),
@@ -398,7 +423,7 @@ handle_win(User,Pid) ->
 
 handle_bordas_collisions(Players, CollisionsBoarders) ->
    % Obter lista de IDs dos jogadores que colidiram com a borda
-    CollidedIds = [Id || {{Id, _, _, _, _, _, _}, _} <- CollisionsBoarders],
+    CollidedIds = [Id || {{Id, _, _, _, _, _, _, _}, _} <- CollisionsBoarders],
 
     case CollidedIds of
         [] ->
@@ -411,8 +436,26 @@ handle_bordas_collisions(Players, CollisionsBoarders) ->
     
     UpdatedPlayers2.
 
+handle_bordas_bullets_collisions(Bullets, CollisionsBulletsBorder) ->
+   % Obter lista de IDs dos jogadores que colidiram com a borda
+   case CollisionsBulletsBorder of
+        [] -> ok;
+        _  -> io:format("Colisões da bala com a bord: ~p~n", [CollisionsBulletsBorder])
+    end,
+   CollidedPositions = [Pos || {{Pos, _, _, _}} <- CollisionsBulletsBorder],
+
+    case CollidedPositions of
+        [] ->
+            UpdateBullets = Bullets; % ninguém colidiu, não dá pontos
+        _  ->
+            % Atualiza apenas quem não colidiu
+            UpdateBullets = projectile:remove_bullets(CollidedPositions, Bullets)
+    end,
+    
+    UpdateBullets.
+
 maybe_update_score(Player, CollidedIds, Points) ->
-    {{Id, _, _, _, _, _, _}, _} = Player,
+    {{Id, _, _, _, _, _, _,_}, _} = Player,
     case lists:member(Id, CollidedIds) of
         true -> Player; % não atualiza se colidiu
         false -> player:update_player_score(Player, Points) % atualiza se não colidiu
@@ -423,7 +466,7 @@ handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
         [] -> ok;
         _  -> io:format("Colisões com bala: ~p~n", [CollisionsBullets])
     end,
-    CollidedIds = [Id || {{{Id, _, _, _, _, _, _}, _}, Projectile} <- CollisionsBullets],
+    CollidedIds = [Id || {{{Id, _, _, _, _, _, _, _}, _}, Projectile} <- CollisionsBullets],
 
     case CollidedIds of
         [] ->
@@ -441,7 +484,7 @@ handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
     {UpdatedPlayers, NewBullets}.
 
 maybe_update_buffs(Player, CollidedIds) ->
-    {{Id, _, _, _, _, _, _}, _} = Player,
+    {{Id, _, _, _, _, _, _, _}, _} = Player,
     case lists:keyfind(Id, 1, CollidedIds) of
         {Id, Modifier} ->
             player:update_player_modifier(Player, Modifier); % se colidiu, aplica
@@ -455,7 +498,7 @@ handle_modifier_collisions(Players, Modifiers, CollisionsModifiers) ->
         [] -> ok;
         _  -> io:format("Colisões com modifiers: ~p~n", [CollisionsModifiers])
     end,
-    CollidedIds = [{Id,Modifier} || {{{Id, _, _, _, _, _, _}, _}, Modifier} <- CollisionsModifiers],
+    CollidedIds = [{Id,Modifier} || {{{Id, _, _, _, _, _, _, _}, _}, Modifier} <- CollisionsModifiers],
 
     case CollidedIds of
         [] ->

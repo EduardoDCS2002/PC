@@ -8,7 +8,7 @@ formataTecla( Data ) ->
 
 
 jogador_para_string(Jogador) ->
-    {{_,{X, Y}, _, Color, _, _, _},U} = Jogador,
+    {{_,{X, Y}, _, Color, _, _, _, _},U} = Jogador,
     Lista = [U,float_to_list(X, [{decimals, 3}]), float_to_list(Y, [{decimals, 3}]),integer_to_list(Color)],
     string:join(Lista, " ").
 
