@@ -24,7 +24,6 @@ class Game {
   void update (ArrayList<Shooter> players, ArrayList<Modifier> modifiers,ArrayList<Bullet> bullets) {
 
     this.l.lock();
-    println("Teste UPDATE");
     try {
       this.players  = players;
       this.modifiers = modifiers;
