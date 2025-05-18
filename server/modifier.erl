@@ -16,12 +16,11 @@ random_element(List) ->
     lists:nth(Index + 1, List).       % lists:nth is 1-based
 
 %%% Cria um novo modificador com tipo, posição, raio e cor
-new_modifier(Types) ->
+new_modifier(Type) ->
     Position = {
         float(rand:uniform(?SCREEN_WIDTH)), 
         float(rand:uniform(?SCREEN_HEIGHT))
     },
-    Type = random_element(Types),
     Color = case Type of
         green  -> {0, 255, 0};
         orange -> {255, 165, 0};
