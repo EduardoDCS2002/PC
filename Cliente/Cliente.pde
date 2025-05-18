@@ -34,7 +34,7 @@ GButton concluir_registo_button; // botao finaliza registo
 GButton concluir_login_button;  // botao finaliza login
 
 GTextField ip; // normamente localhost
-GTextField porta; // normalmente 22346
+GTextField porta; // normalmente 22345
 
 // strings para leitura
 String lastNome = "";
@@ -129,7 +129,7 @@ public void draw() {
 }
 
 public void menu() {
-   //ipLido = "192.168.1.69";
+
    ipLido = "localhost";
    portaLida = "22345"; 
    boolean ok = con.connect(ipLido, Integer.parseInt(portaLida));  
@@ -477,26 +477,55 @@ public void drawRanking(PApplet appc, GWinData data) {
 
 private List<Player> loadPlayersFromLoginsFile() {
     List<Player> players = new ArrayList<>();
-    String filePath = "C:/Users/franc/OneDrive/Desktop/Pc2025/server/Logins.txt";
-
-    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-        String line;
-        while ((line = br.readLine()) != null) {
-            // Extrair username e level de cada linha do arquivo
-            String parts = line.replace("{", "").replace("}", "").replace(".", "");
-            String[] parts2 = parts.replace("\"", "").split(",");
-
-            String username = parts2[0];
-            int victories = Integer.parseInt(parts2[3]);
-            int defeats = Integer.parseInt(parts2[4]);
-            int level = Integer.parseInt(parts2[5]);
-
-            Player player = new Player(username, victories, defeats, level);
-            players.add(player);
+    con.write("rankings");
+    String infostring = "";
+    
+    // Read data with timeout (5 seconds max)
+    long startTime = System.currentTimeMillis();
+    try {
+        while (infostring.isEmpty() && (System.currentTimeMillis() - startTime < 5000)) {
+            Thread.sleep(300);
+            infostring = con.read();
+            if (!infostring.isEmpty()) {
+                System.out.println("Rankings info: " + infostring);
+                server_connection_label.appendText(infostring);
+            }
         }
-    } catch (IOException e) {
-        e.printStackTrace();
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to read rankings", e);
     }
+
+    // Parse using StringTokenizer
+    try {
+        // Remove unwanted characters first
+        infostring = infostring.replaceAll("[{}\"]", "").trim();
+        
+        // Use StringTokenizer to split by commas
+        StringTokenizer tokenizer = new StringTokenizer(infostring, ",");
+        List<String> tokens = new ArrayList<>();
+        while (tokenizer.hasMoreTokens()) {
+            tokens.add(tokenizer.nextToken().trim());
+        }
+
+        // Ensure we have enough tokens
+        if (tokens.size() == 6) {
+            try {
+                //String username = tokens.get(0);
+                //int victories = Integer.parseInt(tokens.get(3));
+                //int defeats = Integer.parseInt(tokens.get(4));
+                //int level = Integer.parseInt(tokens.get(5));
+                System.out.println("Some error occurs when trying to parse the rankings...");
+                //players.add(new Player(username, victories, defeats, level));
+            } catch (NumberFormatException e) {
+                System.err.println("Skipping malformed line: " + infostring);
+            }
+        } else {
+            System.err.println("Not enough data fields in: " + infostring);
+        }
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to parse rankings", e);
+    }
+    
     return players;
 }
 

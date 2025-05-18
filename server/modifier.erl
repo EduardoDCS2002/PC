@@ -62,6 +62,6 @@ maybe_spawn_modifier(CurrentModifiers) ->
             CurrentModifiers
     end.
 
-%%% Atualiza a lista de modificadores (apenas spawn por enquanto)
+%%% Atualiza a lista de modificadores 
 update_modifiers(Modifiers) ->
     maybe_spawn_modifier(Modifiers).

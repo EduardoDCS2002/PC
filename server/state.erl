@@ -10,15 +10,7 @@
          borda/1]).
 -import(projectile,[new_projectile/3, update_projectiles/1, update_projectile/1, remove_bullets/2]).
 -import (timer, [send_after/3]).%% verificar o estado do jogo
--import (conversor, [formatState/1, formataTecla/1]).
-
-%ANTIGA FUNCIONAL
-%start_state() ->
- %   io:format(" New state~n"),
-  %  register(game,spawn( fun() -> gameManager (novoEstado()) end )),
-   % Timer = spawn( fun() -> refresh(game) end),
-    %Salas = criaSalas(),
-    %register(statePid,spawn( fun() -> lounge(Salas)  end)).
+-import (conversor, [formatState/1]).
 
 
 start_state() ->
@@ -68,12 +60,6 @@ refresh_loop(Pid, Ref) ->
         refresh_loop(Pid, Ref)
     end.
 
-%refresh (Pid) -> 
-    %tirar o stop ok para ter a versao antiga
-    %receive 
-    %    stop -> ok;
-   % after 10 -> Pid ! {refresh, self()}, refresh(Pid) end. % every 10 miliseconds will send the refresh signal to Pid
-
 novaSala() -> 
     [{spawn(fun() -> estado([],[]) end),[]}].
 
@@ -106,10 +92,11 @@ remove(X, L) ->
 
 
 %Encontra o Jogador na sala onde ele se encontra
-ondEstaJogador([], UserProcess) -> []; 
+
+ondEstaJogador([], _) -> []; 
 
 ondEstaJogador([{Pid,[X|Y]}|T],UserProcess) -> 
-    {User,Process} = X, 
+    {_,Process} = X, 
 
     if Process == UserProcess ->
         Pid;
@@ -125,7 +112,7 @@ ondEstaJogador([{Pid,[X|Y]}|T],UserProcess) ->
 %Se estiver entao vai para a sala seguinte 
 
 verificaSala([H|T]) -> 
-    {Pid,ListaJogadores} = H, 
+    {_,ListaJogadores} = H, 
 
     if length(ListaJogadores) < 2 -> 
         H;
@@ -178,7 +165,7 @@ estado(Atuais_Jogadores, Espera_Jogadores) ->
                     io:format("Recebi ready do User ~p e vou adicionar-lo ao jogo ~n", [Username]),
                     Espera_JogadoresAux = Espera_Jogadores ++ [{Username, UserProcess}],
                     [JogadorPid ! {comeca, game} || {_, JogadorPid} <- Espera_JogadoresAux],
-                    [game ! {geraJogador, {Username, UserProcess}} || {Username, UserProcess} <- Espera_JogadoresAux],
+                    [game ! {geraJogador, {Username2, UserProcess2}} || {Username2, UserProcess2} <- Espera_JogadoresAux],
                     estado(Espera_JogadoresAux, [])
             end;
 
@@ -187,13 +174,13 @@ estado(Atuais_Jogadores, Espera_Jogadores) ->
             case length(Espera_Jogadores) of
                 0 ->
                     Lista = Atuais_Jogadores -- [{Username, UserProcess}],
-                    io:format("CASE 0 - A lista de jogadores ativos atuais ~p ~n", [Lista]),
+                    io:format("Jogadores ativos:  ~p ~n", [Lista]),
                     estado(Lista, Espera_Jogadores);
                 _ ->
-                    io:format("A lista de jogadores ativos atuais ~p ~n", [Atuais_Jogadores]),
-                    io:format("Vou tirar o ~p da lista ~n", [{Username, UserProcess}]),
+                    %io:format("A lista de jogadores ativos atuais ~p ~n", [Atuais_Jogadores]),
+                    %io:format("Vou tirar o ~p da lista ~n", [{Username, UserProcess}]),
                     Lista = Atuais_Jogadores -- [{Username, UserProcess}],
-                    io:format("Lista jogador removido ~p ~n", [Lista]),
+                    io:format("Jogadores ativos: ~p ~n", [Lista]),
                     if
                         length(Espera_Jogadores) > 0 ->
                             [H | T] = Espera_Jogadores,
@@ -226,13 +213,13 @@ adicionaJogador(Estado,Jogador) ->
             _ -> ListaJogadores
         end,
     State = { NovaListaJogadores , ListaModifiers, ListaBullets, TamanhoEcra, StartTime},
-    io:fwrite("Estado: ~p ~n", [State]),
+    io:fwrite("Estado após adicionar jogador: ~p ~n", [State]),
     State.
 
 removeJogador(Estado,Jogador) ->
     {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
     State = { ListaJogadores -- [Jogador], ListaModifiers, ListaBullets, TamanhoEcra, StartTime},
-    io:fwrite("Estado com jogador removido: ~p ~n", [State]),
+    io:fwrite("Estado após remover jogador: ~p ~n", [State]),
     State.
 
 %Controla tudo o que se passa no jogo 
@@ -248,7 +235,7 @@ gameManager(Estado)->
             {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
 
             % Encontrar e atualizar o jogador
-            io:format("Recebido comando: ~p~n", [Dir]),
+            io:format("Comando: ~p~n", [Dir]),
             NovaListaJogadores = lists:map(
                 fun({PlayerCordinates, {Username, Pid}} = Jogador) ->
                     case Pid of
@@ -285,7 +272,7 @@ gameManager(Estado)->
 
                             if
                                 TimeDiff >= ReloadTime ->
-                                    io:format("Match encontrado! Criar bala para jogador: ~p~n", [Username]),
+                                    io:format("~p fired the gun!~n", [Username]),
                                     NovaBala = projectile:new_projectile({X, Y}, Pos, BS),
 
                                     % Atualizar o jogador com novo NextBullet = TimeNow
@@ -320,31 +307,19 @@ gameManager(Estado)->
 
             NovoEstado = update(Estado),
             {ListaJogadores,_, _, _, _} = NovoEstado,
-            Pids = [Pid || {_, {User, Pid}} <- ListaJogadores ],
+            Pids = [Pid || {_, {_, Pid}} <- ListaJogadores ],
             [ H ! {line,formatState(NovoEstado)} || H <- Pids],
             gameManager(NovoEstado);
 
-       {leave, From} ->
+       {leave, _} ->
             io:format("Alguem enviou leave~n"),
             {ListaJogadores, _ , _, _, _} = Estado,
-            %%%VERSAO ANTIGA
-            %length(ListaJogadores) == 2 ->
-                    %[H1,H2 | T] = ListaJogadores,
-                    %{_, {_, Pid1}} = H1,
-                    %{_, {_, Pid2}} = H2,
-                    %if
-                       % Pid1 == From ->
-                            %gameManager(removeJogador(Estado,H1));
-                       % Pid2 == From ->
-                            %gameManager(removeJogador(Estado,H2));
-                       % true ->
-                           % gameManager(Estado)
-                   % end
-            [H1,H2 | T] = ListaJogadores,
-            {_, {_, Pid1}} = H1,
-            {_, {_, Pid2}} = H2,
+            
+            [H1,H2 | _] = ListaJogadores,
+            %{_, {_, _}} = H1,
+            %{_, {_, _}} = H2,
             Pendente = removeJogador(Estado,H1),
-            Final = removeJogador(Pendente,H2),
+            removeJogador(Pendente,H2),
             exit(normal) % <-- MATA o processo gameManager
 
 
@@ -466,7 +441,7 @@ handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
         [] -> ok;
         _  -> io:format("Colisões com bala: ~p~n", [CollisionsBullets])
     end,
-    CollidedIds = [Id || {{{Id, _, _, _, _, _, _, _}, _}, Projectile} <- CollisionsBullets],
+    CollidedIds = [Id || {{{Id, _, _, _, _, _, _, _}, _}, _} <- CollisionsBullets],
 
     case CollidedIds of
         [] ->

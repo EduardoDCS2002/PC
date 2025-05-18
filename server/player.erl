@@ -10,8 +10,8 @@
 -define(BASEBULLETRELOAD, 4.0).
 -define(DECAYBULLETSPEED, 0.01).
 -define(DECAYBULLETRELOAD, 0.01).
--define(DECAYNEXTBULLET, 0.15).
-%%% Cria um novo player com posição aleatória e velocidade zero (alterar para ser posiçoes opostas ) ??
+
+%%% Cria um novo player 
 newPlayer(Id) ->
     IdP = Id,
     Color = 50 + rand:uniform(205),
@@ -50,7 +50,7 @@ update_players_decay(Jogadores) ->
     [update_player_decay(Jogador) || Jogador <- Jogadores].
 
 update_player_reset(Jogador) ->
-    {{IdP, _, Vel, Color, Score, BS, BR ,NB}, UserData} = Jogador,
+    {{IdP, _, _, Color, Score, BS, BR ,NB}, UserData} = Jogador,
     NewPos = case IdP of
         1 -> {325.0, 350.0};         % Lado esquerdo
         2 -> {975.0, 350.0}   % Lado direito

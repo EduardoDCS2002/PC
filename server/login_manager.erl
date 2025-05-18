@@ -32,7 +32,6 @@ booleanoString(Estado) ->
 
 mapa_para_string({Username, {Pass, Estado, Vitorias, Derrotas, Nivel}}) ->
     Lista = "{" ++ "\"" ++ Username ++ "\"" ++ ", {" ++ "\"" ++ Pass ++ "\"" ++ "," ++ booleanoString(Estado) ++ "," ++ integer_to_list(Vitorias) ++ "," ++ integer_to_list(Derrotas) ++ "," ++ integer_to_list(Nivel) ++ "}}",
-    io:format("TESTE ~s~n", [Lista]),
     Lista.
 
 maps_para_string([]) -> "";
@@ -95,7 +94,8 @@ loop(Map) ->
             end;
         {{update_loss, Username}, From} ->
     case maps:find(Username, Map) of
-        {ok, {Pass, Estado, Vitorias, Derrotas, Nivel}} ->
+        %% apaguei o Victorias 
+        {ok, {Pass, Estado, _, Derrotas, Nivel}} ->
             NovaDerrota = Derrotas + 1,
             NovoNivel = if Nivel == 1 ->  % Nível 1, não faça nada
                             Nivel;
@@ -124,7 +124,7 @@ loop(Map) ->
 
     {{update_win, Username}, From} ->
         case maps:find(Username, Map) of
-            {ok, {Pass, Estado, Vitorias, Derrotas, Nivel}} ->
+            {ok, {Pass, Estado, Vitorias, _, Nivel}} ->
                 NovaVitoria = Vitorias + 1,
                 NovoNivel = if NovaVitoria == Nivel -> Nivel + 1;  % Incrementa o nível se o número de vitórias atingir o limite
                             true -> Nivel

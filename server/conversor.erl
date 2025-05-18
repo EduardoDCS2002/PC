@@ -1,11 +1,5 @@
 -module(conversor).
--export([formatState/1, formataTecla/1]).
-
-formataTecla( Data ) ->
-    Key = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-    Key.
-
-
+-export([formatState/1]).
 
 jogador_para_string(Jogador) ->
     {{_,{X, Y}, _, Color, _, _, _, _},U} = Jogador,

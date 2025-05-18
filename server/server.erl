@@ -126,8 +126,16 @@ authenticator(Sock) ->
                             authenticator(Sock)
                     end;
 
-                "pontos" ->
-                    io:format("PONTOS ~n");
+                "ranking" ++ _Rest ->
+                    case file:read_file("Logins.txt") of
+                        {ok, Binary} ->
+                            String = binary_to_list(Binary),
+                            gen_tcp:send(Sock, String),
+                            authenticator(Sock);
+                        {error, Reason} ->
+                            gen_tcp:send(Sock, "ERROR: " ++ file:format_error(Reason)),
+                            authenticator(Sock)
+                    end;
 
 
                 _ ->
@@ -140,16 +148,16 @@ authenticator(Sock) ->
 user(Sock, Username) ->
     statePid ! {ready, Username, self()},
     gen_tcp:send(Sock, <<"Há espera por vaga\n">>),
-    io:format("Estou á espera de um Começa!~n"),
+    io:format("Estou á espera de uma mensagem Começa!~n"),
     receive % Enquanto não receber resposta fica bloqueado
         {comeca, GameManager} ->
             gen_tcp:send(Sock, <<"Comeca\n">>),
-            io:format("Desbloquiei vou começar o jogo~n"),
+            io:format("Vou começar o jogo~n"),
             cicloJogo(Sock, Username, GameManager) % Desbloqueou vai para a função principal do jogo
     end.
 %%new, tentar tratar os dados vindo dos controlos
 parse_input(Data, From) ->
-    io:format("Recebi comando de PID: ~p, comando: ~p~n", [From, Data]),
+    io:format("PID: ~p mandou o comando: ~p~n", [From, Data]),
     % Remove espaços
     Clean = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
     Stripped = re:replace(Clean, "\r", "", [global,{return,list}]),
@@ -159,20 +167,20 @@ parse_input(Data, From) ->
         ["quit"] ->
             quit;
         ["bang", Xstr, Ystr] ->
-            io:format("Entrei aqui: ~p~n", [Tokens]),
-            io:format("Xstr (raw): ~p~n", [Xstr]),
-            io:format("Entrei aqui: ~p~n", [string:to_integer(Xstr)]),
+            %io:format("Entrei aqui: ~p~n", [Tokens]),
+            %io:format("Xstr (raw): ~p~n", [Xstr]),
+            %io:format("Entrei aqui: ~p~n", [string:to_integer(Xstr)]),
             {X,Y} = {string:to_integer(Xstr), string:to_integer(Ystr)},
             {{NumX,_},{NumY,_}}= {X,Y},
-            io:format("Almost there: ~p~n", [{X,Y}]),
+            %io:format("Almost there: ~p~n", [{X,Y}]),
             case {NumX, NumY} of
                 {NumX,NumY} ->
-                    io:format("Done: ~p~n", [Tokens]),
+                    %io:format("Done: ~p~n", [Tokens]),
                     NewX = float(NumX),
                     NewY = float(NumY),
                     {shoot, {NewX,NewY}, From};
                 _ ->
-                    io:format("Erro ao converter para float: ~p~n", [Tokens]),
+                    %io:format("Erro ao converter para float: ~p~n", [Tokens]),
                     unknown_command
             end;
         ["L"] -> {keyPressed, left, From};
@@ -209,21 +217,6 @@ cicloJogo(Sock, Username, GameManager) ->
             end;
 
 
-
-        %%VERSAO ANTIGA FUNCIONAL
-        %{tcp, _, Data} -> % Recebemos alguma coisa do socket (Cliente), enviamos para o GameManager
-            %NewData = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-            %case NewData of
-                %"quit" ->
-                    %io:format("Recebi quit~n"),
-                    %statePid ! {leave, Username, self()},
-                    %logout(Username),
-                    %authenticator(Sock);
-                %_ ->
-                    %io:format("RECEBI ESTES DADOS~p~n",[Data]),
-                    %GameManager ! {keyPressed, Data, self()},
-                    %cicloJogo(Sock, Username, GameManager)
-            %end;
         {tcp_closed, _} ->
             statePid ! {leave, Username, self()},
             logout(Username);
