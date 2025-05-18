@@ -98,6 +98,9 @@ void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
    if(appc.keyCode == DOWN || appc.key == 's' || appc.key == 'S'){
      command = "D\n";
    }
+   if(appc.keyCode == ' ' ){
+     command = "bang" + " " + appc.mouseX + " " + appc.mouseY;
+   }
    
    if(command != ""){
      println(command);
@@ -106,15 +109,15 @@ void keyPressed_Handler(PApplet appc, GWinData data, KeyEvent event) {
   }
 }
 
-//esta a dar mal idk why
-void mousePressed_Handler(PApplet appc, GWinData data, MouseEvent event) {
-  println("mousePressed_Handler chamado");
-  if (event.getButton() == MouseEvent.BUTTON1 ) {
-
-    String command = "SHOOT " + appc.mouseX + " " + appc.mouseY + "\n";
-    println(command);
-    con.write(command);  // Envia comando para o servidor
-  }
+public void mousePressed_Handler(PApplet appc, GWinData data, MouseEvent event){
+  if (event.getButton() == MouseEvent.BUTTON1) { // botão esquerdo
+        int x = event.getX();
+        int y = event.getY();
+        String command = "SHOOT " + x + " " + y;
+        println(command);
+        con.write(command);
+    }
+   
 }
 
 public void draw() {

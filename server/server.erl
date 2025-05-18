@@ -147,6 +147,41 @@ user(Sock, Username) ->
             io:format("Desbloquiei vou começar o jogo~n"),
             cicloJogo(Sock, Username, GameManager) % Desbloqueou vai para a função principal do jogo
     end.
+%%new, tentar tratar os dados vindo dos controlos
+parse_input(Data, From) ->
+    io:format("Recebi comando de PID: ~p, comando: ~p~n", [From, Data]),
+    % Remove espaços
+    Clean = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
+    Stripped = re:replace(Clean, "\r", "", [global,{return,list}]),
+    % Quebra a string em tokens separados por espaço
+    Tokens = string:tokens(Stripped, " "),
+    case Tokens of
+        ["quit"] ->
+            quit;
+        ["bang", Xstr, Ystr] ->
+            io:format("Entrei aqui: ~p~n", [Tokens]),
+            io:format("Xstr (raw): ~p~n", [Xstr]),
+            io:format("Entrei aqui: ~p~n", [string:to_integer(Xstr)]),
+            {X,Y} = {string:to_integer(Xstr), string:to_integer(Ystr)},
+            {{NumX,_},{NumY,_}}= {X,Y},
+            io:format("Almost there: ~p~n", [{X,Y}]),
+            case {NumX, NumY} of
+                {NumX,NumY} ->
+                    io:format("Done: ~p~n", [Tokens]),
+                    NewX = float(NumX),
+                    NewY = float(NumY),
+                    {shoot, {NewX,NewY}, From};
+                _ ->
+                    io:format("Erro ao converter para float: ~p~n", [Tokens]),
+                    unknown_command
+            end;
+        ["L"] -> {keyPressed, left, From};
+        ["U"] -> {keyPressed, up, From};
+        ["R"] -> {keyPressed, right, From};
+        ["D"] -> {keyPressed, down, From};
+        _ ->
+            unknown_command
+    end.
 
 cicloJogo(Sock, Username, GameManager) -> 
     receive
@@ -154,19 +189,41 @@ cicloJogo(Sock, Username, GameManager) ->
             %io:format("ENVIEI ESTES DADOS~p~n",[Data]),
             gen_tcp:send(Sock, Data),
             cicloJogo(Sock, Username, GameManager);
-        {tcp, _, Data} -> % Recebemos alguma coisa do socket (Cliente), enviamos para o GameManager
-            NewData = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-            case NewData of
-                "quit" ->
+
+        {tcp, _, Data} ->
+            case parse_input(Data, self()) of
+                quit ->
                     io:format("Recebi quit~n"),
                     statePid ! {leave, Username, self()},
                     logout(Username),
                     authenticator(Sock);
-                _ ->
-                    %io:format("RECEBI ESTES DADOS~p~n",[Data]),
-                    GameManager ! {keyPressed, Data, self()},
+                {shoot, Pos, From} ->
+                    GameManager ! {shoot, Pos, From},
+                    cicloJogo(Sock, Username, GameManager);
+                {keyPressed, Dir, From} ->
+                    GameManager ! {keyPressed, Dir, From},
+                    cicloJogo(Sock, Username, GameManager);
+                unknown_command ->
+                    io:format("Comando desconhecido recebido: ~p~n", [Data]),
                     cicloJogo(Sock, Username, GameManager)
             end;
+
+
+
+        %%VERSAO ANTIGA FUNCIONAL
+        %{tcp, _, Data} -> % Recebemos alguma coisa do socket (Cliente), enviamos para o GameManager
+            %NewData = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
+            %case NewData of
+                %"quit" ->
+                    %io:format("Recebi quit~n"),
+                    %statePid ! {leave, Username, self()},
+                    %logout(Username),
+                    %authenticator(Sock);
+                %_ ->
+                    %io:format("RECEBI ESTES DADOS~p~n",[Data]),
+                    %GameManager ! {keyPressed, Data, self()},
+                    %cicloJogo(Sock, Username, GameManager)
+            %end;
         {tcp_closed, _} ->
             statePid ! {leave, Username, self()},
             logout(Username);

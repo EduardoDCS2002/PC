@@ -8,8 +8,8 @@
 -define(BULLETCHANGERELOAD, 1.0).
 -define(BASEBULLETSPEED, 8.0).
 -define(BASEBULLETRELOAD, 4.0).
--define(DECAYBULLETSPEED, 0.5).
--define(DECAYBULLETRELOAD, 0.4).
+-define(DECAYBULLETSPEED, 0.01).
+-define(DECAYBULLETRELOAD, 0.01).
 
 %%% Cria um novo player com posição aleatória e velocidade zero (alterar para ser posiçoes opostas ) ??
 newPlayer(Id) ->
@@ -41,6 +41,8 @@ update_player_decay(Jogador)->
         _ -> BR
     end,
 
+    
+
     {{IdP, Pos, Vel, Color, Score, NewBS, NewBR}, UserData}.
 
 update_players_decay([])->
@@ -54,7 +56,8 @@ update_player_reset(Jogador) ->
         1 -> {325.0, 350.0};         % Lado esquerdo
         2 -> {975.0, 350.0}   % Lado direito
     end,
-    {{IdP, NewPos, Vel, Color, Score, BS, BR}, UserData}.
+    NewVelo = {0.0,0.0},
+    {{IdP, NewPos, NewVelo, Color, Score, BS, BR}, UserData}.
 
 update_players_reset([])->
     [];
@@ -69,10 +72,10 @@ clamp(V, _) -> V.
 
 update_player_position({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, Key) ->
     {Ax,Ay}= case Key of
-        <<"U\n">> -> {0.0, -?ACCELERATION};
-        <<"D\n">> -> {0.0, ?ACCELERATION};
-        <<"L\n">> -> {-?ACCELERATION, 0.0};
-        <<"R\n">> -> {?ACCELERATION, 0.0};
+        up -> {0.0, -?ACCELERATION};
+        down -> {0.0, ?ACCELERATION};
+        left -> {-?ACCELERATION, 0.0};
+        right -> {?ACCELERATION, 0.0};
         _ -> {0.0, 0.0}
     end,
     {Vx, Vy} = Vel,

@@ -5,6 +5,8 @@ formataTecla( Data ) ->
     Key = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
     Key.
 
+
+
 jogador_para_string(Jogador) ->
     {{_,{X, Y}, _, Color, _, _, _},U} = Jogador,
     Lista = [U,float_to_list(X, [{decimals, 3}]), float_to_list(Y, [{decimals, 3}]),integer_to_list(Color)],

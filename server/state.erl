@@ -244,16 +244,16 @@ gameManager(Estado)->
         
 
         %Recebe os argumentos de movimentação e atualiza a posição dos jogadores
-        {keyPressed, Data, From} ->
+        {keyPressed, Dir, From} ->
             {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
 
             % Encontrar e atualizar o jogador
-            io:format("Recebido comando: ~p~n", [Data]),
+            io:format("Recebido comando: ~p~n", [Dir]),
             NovaListaJogadores = lists:map(
                 fun({PlayerCordinates, {Username, Pid}} = Jogador) ->
                     case Pid of
                         From ->
-                            NovoJogador = player:update_player_position({PlayerCordinates, {Username, Pid}}, Data),
+                            NovoJogador = player:update_player_position({PlayerCordinates, {Username, Pid}}, Dir),
                             NovoJogador;
                         _ ->
                             Jogador
@@ -267,19 +267,24 @@ gameManager(Estado)->
             gameManager(NovoEstado);
 
         %Recebe os argumentos de shooting e cria the bullet
-        {shoot, Data, From} ->
+        {shoot, Pos, From} ->
             {ListaJogadores, ListaModifiers, ListaBullets, TamanhoEcra, StartTime} = Estado,
-
+            io:format("From recebido: ~p~n", [From]),
+            %lists:foreach(fun({_, {_, Pid}}) -> io:format("Comparar com Pid: ~p~n", [Pid]) end, ListaJogadores),
+            %io:format("ListaJogadores:~n~p~n", [ListaJogadores]),
             % Criar a Bala
             BulletsCriadas = lists:filtermap(
-                %%% nao esta direito, brain lag , precisa de receber as cordenadas certas
-                fun({{{PosX, PosY}, _, _, _, BulletSpeed, _}, {_, Pid}}) ->
-                    case Pid of
-                        From ->
-                            NovaBala = projectile:new_projectile({PosX, PosY}, Data, BulletSpeed), % Data aqui deve ser {CursorX, CursorY}
-                            NovaBala;
-                        _ ->
-                            false % deve dar skip right?
+                fun(Jogador) ->
+                    {{IdP, {X,Y}, V, S, C, BS, BR},{Username, Pid}} = Jogador,
+                    case From of
+                        Pid ->
+                            io:format("Match encontrado! Criar bala para jogador: ~p~n", [Username]),
+                            NovaBala = projectile:new_projectile({X, Y}, Pos, BS), % Data aqui deve ser {CursorX, CursorY}
+                            io:format("Nova bala criada: ~p~n", [NovaBala]),
+                            {true, NovaBala};
+                        (_) ->
+                            io:format("Ignorado jogador: ~p~n", [Username]),
+                            false% ignora jogadores diferentes
                     end
                 end,
                 ListaJogadores
@@ -420,10 +425,15 @@ maybe_update_score(Player, CollidedIds) ->
    % player:update_players_position_reset(NotChangedPlayers ++ ChangedPlayers).
 
 handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
+    case CollisionsBullets of
+        [] -> ok;
+        _  -> io:format("Colisões com bala: ~p~n", [CollisionsBullets])
+    end,
     % Atualizar jogadores que colidiram
     UpdatedMap = maps:from_list(
         [{element(1, Player), player:update_player_score(Player, 1)}
          || {Player, Bullet} <- CollisionsBullets]
+        
     ),
 
     % Jogadores atualizados + os que não colidiram
@@ -434,7 +444,11 @@ handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
     CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsBullets],
 
     % Remover modificadores colididos
-    NewBullets = projectile:remove_bullets(CollidedPositions, Bullets),
+    NewBullets =
+        if
+            CollidedPositions =:= [] -> Bullets;
+            true -> projectile:remove_bullets(CollidedPositions, Bullets)
+        end,
 
     {UpdatedPlayers, NewBullets}.
 
@@ -449,6 +463,10 @@ handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
 
 %%Aplicar os efeitos dos modificadores
 handle_modifier_collisions(Players, Modifiers, CollisionsModifiers) ->
+    case CollisionsModifiers of
+        [] -> ok;
+        _  -> io:format("Colisões com modifiers: ~p~n", [CollisionsModifiers])
+    end,
     % Atualizar jogadores que colidiram
     UpdatedMap = maps:from_list(
         [{element(1, Player), player:update_player_modifier(Player, Modifier)}
@@ -462,8 +480,11 @@ handle_modifier_collisions(Players, Modifiers, CollisionsModifiers) ->
     %{Position, ?MODIFIER_RADIUS, Type, Color}
     CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsModifiers],
 
-    % Remover modificadores colididos
-    NewModifiers = modifier:remove_modifier(CollidedPositions, Modifiers),
+    NewModifiers =
+        if
+            CollidedPositions =:= [] -> Modifiers;
+            true -> modifier:remove_modifier(CollidedPositions, Modifiers)
+        end,
 
     {UpdatedPlayers, NewModifiers}.
 

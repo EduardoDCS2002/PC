@@ -16,7 +16,7 @@ class Shooter {
   void display(PApplet appc) {
     
     appc.fill(col,0,col);
-    appc.ellipse(x, y, 40 , 40);
+    appc.ellipse(x, y, 50, 50);
   
   }
 }

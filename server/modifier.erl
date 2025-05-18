@@ -3,7 +3,7 @@
 
 -define(SPAWN_PROBABILITY, 0.05).  % 5% spawn chance per tick
 -define(MAX_PER_TYPE, 1).
--define(MODIFIER_RADIUS, 50.0).
+-define(MODIFIER_RADIUS, 30.0).
 -define(SCREEN_WIDTH, 1300).       % screen bounds
 -define(SCREEN_HEIGHT, 700).
 
@@ -31,8 +31,13 @@ new_modifier() ->
     {Position, ?MODIFIER_RADIUS, Type, Color}.
 
 %%% Remove um modificador por posição
-remove_modifier(Position, Modifiers) ->
-    lists:filter(fun({Pos, _, _, _}) -> Pos /= Position end, Modifiers).
+remove_modifier(CollidedPositions, Modifiers) ->
+    lists:filter(
+        fun({Pos, _, _, _}) ->
+            not lists:member(Pos, CollidedPositions)
+        end,
+        Modifiers
+    ).
 
 %%% Conta modificadores por tipo
 count_by_type(Modifiers) ->
