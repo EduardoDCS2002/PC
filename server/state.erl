@@ -398,23 +398,31 @@ handle_win(User,Pid) ->
 
 handle_bordas_collisions(Players, CollisionsBoarders) ->
    % Obter lista de IDs dos jogadores que colidiram com a borda
-    CollidedIds = [element(1, Player) || Player <- CollisionsBoarders],
+    CollidedIds = [Id || {{{Id, _, _, _, _, _, _}, _}, _Projectile} <- CollisionsBoarders],
 
+    case CollidedIds of
+        [] ->
+            UpdatedPlayers = Players; % ninguém colidiu, não dá pontos
+        _  ->
+            % Atualiza apenas quem não colidiu
+            UpdatedPlayers = [maybe_update_score(Player, CollidedIds, 2) || Player <- Players],
+            player:update_players_reset(UpdatedPlayers)
+    end,
     % Atualizar apenas os jogadores que NÃO colidiram
-    UpdatedPlayers = [maybe_update_score(Player, CollidedIds) || Player <- Players],
+    %UpdatedPlayers = [maybe_update_score(Player, CollidedIds, 2) || Player <- Players],
 
-    UpdatedPlayers2 =
-        if
-            CollidedIds =:= [] -> UpdatedPlayers;
-            true -> player:update_players_reset(UpdatedPlayers)
-        end,
-    UpdatedPlayers2.
+   %UpdatedPlayers2 =
+        %if
+            %CollidedIds =:= [] -> UpdatedPlayers;
+           % true -> player:update_players_reset(UpdatedPlayers)
+        %end,
+    UpdatedPlayers.
 
-maybe_update_score(Player, CollidedIds) ->
-    Id = element(1, Player),
+maybe_update_score(Player, CollidedIds, Points) ->
+    {{Id, _, _, _, _, _, _}, _} = Player,
     case lists:member(Id, CollidedIds) of
         true -> Player; % não atualiza se colidiu
-        false -> player:update_player_score(Player, 2) % atualiza se não colidiu
+        false -> player:update_player_score(Player, Points) % atualiza se não colidiu
     end.
 
 %handle_bordas([], Players) ->
@@ -429,26 +437,31 @@ handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
         [] -> ok;
         _  -> io:format("Colisões com bala: ~p~n", [CollisionsBullets])
     end,
-    % Atualizar jogadores que colidiram
-    UpdatedMap = maps:from_list(
-        [{element(1, Player), player:update_player_score(Player, 1)}
-         || {Player, Bullet} <- CollisionsBullets]
-        
-    ),
+    CollidedIds = [Id || {{{Id, _, _, _, _, _, _}, _}, _Projectile} <- CollisionsBullets],
 
-    % Jogadores atualizados + os que não colidiram
-    UpdatedPlayers = [maps:get(element(1, Player), UpdatedMap, Player) || Player <- Players],
+    case CollidedIds of
+        [] ->
+            UpdatedPlayers = Players,
+            NewBullets = Bullets; % ninguém colidiu, não dá pontos
+        _  ->
+            % Atualiza apenas quem não colidiu
+            UpdatedPlayers = [maybe_update_score(Player, CollidedIds, 1) || Player <- Players],
+            CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsBullets],
+            % Remover modificadores colididos
+            NewBullets = projectile:remove_bullets(CollidedPositions, Bullets)
+            
+    end,
 
     % Posicoes das bullets colididos
     %{{PlayerX, PlayerY}, {Vx, Vy}, ?PROJECTILE_RADIUS, T}
-    CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsBullets],
+    %CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsBullets],
 
     % Remover modificadores colididos
-    NewBullets =
-        if
-            CollidedPositions =:= [] -> Bullets;
-            true -> projectile:remove_bullets(CollidedPositions, Bullets)
-        end,
+    %NewBullets =
+        %if
+            %CollidedPositions =:= [] -> Bullets;
+            %true -> projectile:remove_bullets(CollidedPositions, Bullets)
+        %end,
 
     {UpdatedPlayers, NewBullets}.
 

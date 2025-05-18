@@ -122,29 +122,29 @@ loop(Map) ->
             loop(Map)
     end;
 
-{{update_win, Username}, From} ->
-    case maps:find(Username, Map) of
-        {ok, {Pass, Estado, Vitorias, Derrotas, Nivel}} ->
-            NovaVitoria = Vitorias + 1,
-            NovoNivel = if NovaVitoria == Nivel -> Nivel + 1;  % Incrementa o nível se o número de vitórias atingir o limite
-                        true -> Nivel
-                    end,
-            NovoEstado = case NovoNivel /= Nivel of
-                            true -> {Pass, Estado, 0, 0, NovoNivel};  % Reinicia vitórias e derrotas se o nível mudar
-                            false -> {Pass, Estado, NovaVitoria, 0, NovoNivel}  % Zera derrotas consecutivas
+    {{update_win, Username}, From} ->
+        case maps:find(Username, Map) of
+            {ok, {Pass, Estado, Vitorias, Derrotas, Nivel}} ->
+                NovaVitoria = Vitorias + 1,
+                NovoNivel = if NovaVitoria == Nivel -> Nivel + 1;  % Incrementa o nível se o número de vitórias atingir o limite
+                            true -> Nivel
                         end,
-            Map2 = maps:put(Username, NovoEstado, Map),
-            file:delete("Logins.txt"),
-            {ok, File} = file:open("Logins.txt", [write]),
-            F = maps_para_string(maps:to_list(Map2)),
-            file:write(File, io_lib:fwrite("~s~n", [F])),
-            file:close(File),
-            From ! ok,
-            loop(Map2);
-        _ ->
-            From ! invalid,  % Usuário não encontrado
-            loop(Map)
-    end
+                NovoEstado = case NovoNivel /= Nivel of
+                                true -> {Pass, Estado, 0, 0, NovoNivel};  % Reinicia vitórias e derrotas se o nível mudar
+                                false -> {Pass, Estado, NovaVitoria, 0, NovoNivel}  % Zera derrotas consecutivas
+                            end,
+                Map2 = maps:put(Username, NovoEstado, Map),
+                file:delete("Logins.txt"),
+                {ok, File} = file:open("Logins.txt", [write]),
+                F = maps_para_string(maps:to_list(Map2)),
+                file:write(File, io_lib:fwrite("~s~n", [F])),
+                file:close(File),
+                From ! ok,
+                loop(Map2);
+            _ ->
+                From ! invalid,  % Usuário não encontrado
+                loop(Map)
+        end
 
 
 
