@@ -1,5 +1,5 @@
 -module(projectile).
--export([new_projectile/3, update_projectiles/1, update_projectile/1, filter_expired/1]).
+-export([new_projectile/3, update_projectiles/1, update_projectile/1, filter_expired/1, remove_bullets/2]).
 
 -define(PROJECTILE_RADIUS, 3.0).
 -define(PROJECTILE_SPEED, 8.0).  % Pixels per update
@@ -35,3 +35,7 @@ update_projectiles(Projectiles) ->
 filter_expired(Projectiles) ->
     Now = erlang:system_time(millisecond),
     [P || P = {_, _, _, T} <- Projectiles, Now - T =< ?PROJECTILE_LIFESPAN_MS].
+
+%%% Remove um modificador por posição
+remove_bullets(Position, Bullets) ->
+    lists:filter(fun({Pos, _, _, _}) -> Pos /= Position end, Bullets).

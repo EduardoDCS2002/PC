@@ -28,33 +28,19 @@ newPlayer(Id) ->
 %%Vai atualizando os valores alterados pelos modificadores
 update_player_decay(Jogador)->
     {{IdP, Pos, Vel, Color, Score, BS, BR}, UserData} = Jogador,
-    if 
-        BS > ?BASEBULLETSPEED , BR < ?BASEBULLETRELOAD ->
-            NewBS = BS - ?DECAYBULLETSPEED,
-            NewBR = BR + ?DECAYBULLETRELOAD;
-        BS > ?BASEBULLETSPEED , BR == ?BASEBULLETRELOAD ->
-            NewBS = BS - ?DECAYBULLETSPEED,
-            NewBR = BR;
-        BS == ?BASEBULLETSPEED, BR < ?BASEBULLETRELOAD ->
-            NewBS = BS,
-            NewBR = BR + ?DECAYBULLETRELOAD;
-        BS == ?BASEBULLETSPEED, BR == ?BASEBULLETRELOAD ->
-            NewBS = BS,
-            NewBR = BR;
-        BS < ?BASEBULLETSPEED , BR > ?BASEBULLETRELOAD ->
-            NewBS = BS + ?DECAYBULLETSPEED,
-            NewBR = BR - ?DECAYBULLETRELOAD;
-        BS < ?BASEBULLETSPEED , BR == ?BASEBULLETRELOAD ->
-            NewBS = BS + ?DECAYBULLETSPEED,
-            NewBR = BR;
-        BS == ?BASEBULLETSPEED, BR > ?BASEBULLETRELOAD ->
-            NewBS = BS,
-            NewBR = BR - ?DECAYBULLETRELOAD;
-        true -> 
-            NewBS = BS,
-            NewBR = BR % fallback seguro
 
+    NewBS = case BS of
+        _ when BS > ?BASEBULLETSPEED -> BS - ?DECAYBULLETSPEED;
+        _ when BS < ?BASEBULLETSPEED -> BS + ?DECAYBULLETSPEED;
+        _ -> BS
     end,
+
+    NewBR = case BR of
+        _ when BR > ?BASEBULLETRELOAD -> BR - ?DECAYBULLETRELOAD;
+        _ when BR < ?BASEBULLETRELOAD -> BR + ?DECAYBULLETRELOAD;
+        _ -> BR
+    end,
+
     {{IdP, Pos, Vel, Color, Score, NewBS, NewBR}, UserData}.
 
 update_players_decay([])->
@@ -65,8 +51,8 @@ update_players_decay(Jogadores) ->
 update_player_reset(Jogador) ->
     {{IdP, _, Vel, Color, Score, BS, BR}, UserData} = Jogador,
     NewPos = case IdP of
-        1 -> {float(rand:uniform(200)), float(rand:uniform(700))};         % Lado esquerdo
-        2 -> {float(1100 + rand:uniform(200)), float(rand:uniform(700))}   % Lado direito
+        1 -> {325.0, 350.0};         % Lado esquerdo
+        2 -> {975.0, 350.0}   % Lado direito
     end,
     {{IdP, NewPos, Vel, Color, Score, BS, BR}, UserData}.
 

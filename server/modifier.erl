@@ -2,7 +2,7 @@
 -export([new_modifier/0, maybe_spawn_modifier/1, update_modifiers/1, remove_modifier/2]).
 
 -define(SPAWN_PROBABILITY, 0.05).  % 5% spawn chance per tick
--define(MAX_PER_TYPE, 3).
+-define(MAX_PER_TYPE, 1).
 -define(MODIFIER_RADIUS, 50.0).
 -define(SCREEN_WIDTH, 1300).       % screen bounds
 -define(SCREEN_HEIGHT, 700).
@@ -59,4 +59,10 @@ maybe_spawn_modifier(CurrentModifiers) ->
 
 %%% Atualiza a lista de modificadores (apenas spawn por enquanto)
 update_modifiers(Modifiers) ->
-    maybe_spawn_modifier(Modifiers).
+    case length(Modifiers) < 3 of
+        true ->
+            New = new_modifier(),
+            [New | Modifiers];
+        false ->
+            Modifiers
+    end.

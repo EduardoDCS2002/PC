@@ -4,7 +4,7 @@
          check_colision_boards_players/1, %check_colision_boards_bullet/1,
          borda/1]).
 
--define(PLAYER_RADIUS, 40.0).
+-define(PLAYER_RADIUS, 20.0).
 -define(SCREEN_WIDTH, 1300).
 -define(SCREEN_HEIGHT, 700).
 
@@ -34,6 +34,8 @@ check_collisions_bullet(Players, Projectiles) ->
 
 check_colision_boards_players(Players) ->
     [Player || Player <- Players, borda(Player)].
+
+
 
 %%%check_colision_boards_bullet(Projectiles) ->
 %%%    [Projectile || Projectile <- Projectiles, borda(Projectile)].
