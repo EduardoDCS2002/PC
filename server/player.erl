@@ -8,9 +8,9 @@
 -define(BULLETCHANGERELOAD, 1.0).
 -define(BASEBULLETSPEED, 8.0).
 -define(BASEBULLETRELOAD, 4.0).
--define(DECAYBULLETSPEED, 0.5).
--define(DECAYBULLETRELOAD, 0.4).
-
+-define(DECAYBULLETSPEED, 0.01).
+-define(DECAYBULLETRELOAD, 0.01).
+-define(DECAYNEXTBULLET, 0.15).
 %%% Cria um novo player com posição aleatória e velocidade zero (alterar para ser posiçoes opostas ) ??
 newPlayer(Id) ->
     IdP = Id,
@@ -23,39 +23,25 @@ newPlayer(Id) ->
     Score = 0,
     BulletSpeed = 8.0,
     BulletReload = 4.0,
-    {IdP, Position, Velocity, Color, Score, BulletSpeed, BulletReload}.
-
+    NextBullet = erlang:monotonic_time(millisecond),
+    {IdP, Position, Velocity, Color, Score, BulletSpeed, BulletReload, NextBullet}.
 %%Vai atualizando os valores alterados pelos modificadores
 update_player_decay(Jogador)->
-    {{IdP, Pos, Vel, Color, Score, BS, BR}, UserData} = Jogador,
-    if 
-        BS > ?BASEBULLETSPEED , BR < ?BASEBULLETRELOAD ->
-            NewBS = BS - ?DECAYBULLETSPEED,
-            NewBR = BR + ?DECAYBULLETRELOAD;
-        BS > ?BASEBULLETSPEED , BR == ?BASEBULLETRELOAD ->
-            NewBS = BS - ?DECAYBULLETSPEED,
-            NewBR = BR;
-        BS == ?BASEBULLETSPEED, BR < ?BASEBULLETRELOAD ->
-            NewBS = BS,
-            NewBR = BR + ?DECAYBULLETRELOAD;
-        BS == ?BASEBULLETSPEED, BR == ?BASEBULLETRELOAD ->
-            NewBS = BS,
-            NewBR = BR;
-        BS < ?BASEBULLETSPEED , BR > ?BASEBULLETRELOAD ->
-            NewBS = BS + ?DECAYBULLETSPEED,
-            NewBR = BR - ?DECAYBULLETRELOAD;
-        BS < ?BASEBULLETSPEED , BR == ?BASEBULLETRELOAD ->
-            NewBS = BS + ?DECAYBULLETSPEED,
-            NewBR = BR;
-        BS == ?BASEBULLETSPEED, BR > ?BASEBULLETRELOAD ->
-            NewBS = BS,
-            NewBR = BR - ?DECAYBULLETRELOAD;
-        true -> 
-            NewBS = BS,
-            NewBR = BR % fallback seguro
+    {{IdP, Pos, Vel, Color, Score, BS, BR, NB}, UserData} = Jogador,
 
+    NewBS = case BS of
+        _ when BS > ?BASEBULLETSPEED -> BS - ?DECAYBULLETSPEED;
+        _ when BS < ?BASEBULLETSPEED -> BS + ?DECAYBULLETSPEED;
+        _ -> BS
     end,
-    {{IdP, Pos, Vel, Color, Score, NewBS, NewBR}, UserData}.
+
+    NewBR = case BR of
+        _ when BR > ?BASEBULLETRELOAD -> BR - ?DECAYBULLETRELOAD;
+        _ when BR < ?BASEBULLETRELOAD -> BR + ?DECAYBULLETRELOAD;
+        _ -> BR
+    end,
+
+    {{IdP, Pos, Vel, Color, Score, NewBS, NewBR, NB}, UserData}.
 
 update_players_decay([])->
     [];
@@ -63,12 +49,13 @@ update_players_decay(Jogadores) ->
     [update_player_decay(Jogador) || Jogador <- Jogadores].
 
 update_player_reset(Jogador) ->
-    {{IdP, _, Vel, Color, Score, BS, BR}, UserData} = Jogador,
+    {{IdP, _, _, Color, Score, BS, BR ,NB}, UserData} = Jogador,
     NewPos = case IdP of
-        1 -> {float(rand:uniform(200)), float(rand:uniform(700))};         % Lado esquerdo
-        2 -> {float(1100 + rand:uniform(200)), float(rand:uniform(700))}   % Lado direito
+        1 -> {325.0, 350.0};         % Lado esquerdo
+        2 -> {975.0, 350.0}   % Lado direito
     end,
-    {{IdP, NewPos, Vel, Color, Score, BS, BR}, UserData}.
+    NewVelo = {0.0,0.0},
+    {{IdP, NewPos, NewVelo, Color, Score, BS, BR, NB}, UserData}.
 
 update_players_reset([])->
     [];
@@ -81,12 +68,12 @@ clamp(V, Max) when V > Max -> Max;
 clamp(V, Max) when V < -Max -> -Max;
 clamp(V, _) -> V.
 
-update_player_position({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, Key) ->
+update_player_position({{IdP, Pos, Vel, Color, Score, BS, BR , NB}, UserData}, Key) ->
     {Ax,Ay}= case Key of
-        <<"U\n">> -> {0.0, -?ACCELERATION};
-        <<"D\n">> -> {0.0, ?ACCELERATION};
-        <<"L\n">> -> {-?ACCELERATION, 0.0};
-        <<"R\n">> -> {?ACCELERATION, 0.0};
+        up -> {0.0, -?ACCELERATION};
+        down -> {0.0, ?ACCELERATION};
+        left -> {-?ACCELERATION, 0.0};
+        right -> {?ACCELERATION, 0.0};
         _ -> {0.0, 0.0}
     end,
     {Vx, Vy} = Vel,
@@ -96,11 +83,11 @@ update_player_position({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, Key) -
     NewX = X + NewVx,
     NewY = Y + NewVy,
     
-    {{IdP, {NewX, NewY}, {NewVx, NewVy}, Color, Score, BS, BR}, UserData}.
+    {{IdP, {NewX, NewY}, {NewVx, NewVy}, Color, Score, BS, BR, NB}, UserData}.
 
 
 %%% Atualiza os buffs do player
-update_player_modifier({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, {_, _, Type, _}) ->
+update_player_modifier({{IdP, Pos, Vel, Color, Score, BS, BR , NB}, UserData}, {_, _, Type, _}) ->
     case Type of
         green ->
             NewBS = BS + ?BULLETCHANGESPEED,
@@ -116,10 +103,10 @@ update_player_modifier({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, {_, _,
             NewBR = BR - ?BULLETCHANGERELOAD
     end,
     
-    {{IdP, Pos, Vel, Color, Score, NewBS, NewBR}, UserData}.
+    {{IdP, Pos, Vel, Color, Score, NewBS, NewBR , NB}, UserData}.
 
 %%% Atualiza o score da partida
-update_player_score({{IdP, Pos, Vel, Color, Score, BS, BR}, UserData}, ChangedScore) ->
+update_player_score({{IdP, Pos, Vel, Color, Score, BS, BR, NB}, UserData}, ChangedScore) ->
 
     NewScore = Score + ChangedScore,
-    {{IdP, Pos, Vel, Color, NewScore, BS, BR}, UserData}.
+    {{IdP, Pos, Vel, Color, NewScore, BS, BR, NB}, UserData}.

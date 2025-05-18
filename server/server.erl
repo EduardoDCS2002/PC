@@ -126,9 +126,14 @@ authenticator(Sock) ->
                             authenticator(Sock)
                     end;
 
-                "pontos" ->
-                    io:format("PONTOS ~n");
-
+                "ranking" ++ _Rest ->
+                    case file:read_file("Logins.txt") of
+                        {ok, Binary} ->
+                            String = binary_to_list(Binary),
+                            gen_tcp:send(Sock, String);
+                        {error, Reason} ->
+                            gen_tcp:send(Sock, "ERROR: " ++ file:format_error(Reason))
+                    end;
 
                 _ ->
                     gen_tcp:send(Sock,<<"Opção Inválida \n">>),
@@ -140,33 +145,69 @@ authenticator(Sock) ->
 user(Sock, Username) ->
     statePid ! {ready, Username, self()},
     gen_tcp:send(Sock, <<"Há espera por vaga\n">>),
-    io:format("Estou á espera de um Começa!~n"),
+    io:format("À espera de uma mensagem \"comeca\"!~n"),
     receive % Enquanto não receber resposta fica bloqueado
         {comeca, GameManager} ->
             gen_tcp:send(Sock, <<"Comeca\n">>),
-            io:format("Desbloquiei vou começar o jogo~n"),
+            io:format("Vou começar o jogo~n"),
             cicloJogo(Sock, Username, GameManager) % Desbloqueou vai para a função principal do jogo
+    end.
+%%new, tentar tratar os dados vindo dos controlos
+parse_input(Data, From) ->
+    io:format("PID: ~p mandou o comando: ~p~n", [From, Data]),
+    % Remove espaços
+    Clean = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
+    Stripped = re:replace(Clean, "\r", "", [global,{return,list}]),
+    % Quebra a string em tokens separados por espaço
+    Tokens = string:tokens(Stripped, " "),
+    case Tokens of
+        ["quit"] ->
+            quit;
+        ["bang", Xstr, Ystr] ->
+            {X,Y} = {string:to_integer(Xstr), string:to_integer(Ystr)},
+            {{NumX,_},{NumY,_}}= {X,Y},
+            case {NumX, NumY} of
+                {NumX,NumY} ->
+                    NewX = float(NumX),
+                    NewY = float(NumY),
+                    {shoot, {NewX,NewY}, From};
+                _ ->
+                    io:format("Erro ao converter para float: ~p~n", [Tokens]),
+                    unknown_command
+            end;
+        ["L"] -> {keyPressed, left, From};
+        ["U"] -> {keyPressed, up, From};
+        ["R"] -> {keyPressed, right, From};
+        ["D"] -> {keyPressed, down, From};
+        _ ->
+            unknown_command
     end.
 
 cicloJogo(Sock, Username, GameManager) -> 
     receive
         {line, Data} -> % line é dados do game manager
-            io:format("ENVIEI ESTES DADOS~p para o ~p~n",[Data, Username]),
+            %io:format("ENVIEI ESTES DADOS~p~n",[Data]),
             gen_tcp:send(Sock, Data),
             cicloJogo(Sock, Username, GameManager);
-        {tcp, _, Data} -> % Recebemos alguma coisa do socket (Cliente), enviamos para o GameManager
-            NewData = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
-            case NewData of
-                "quit" ->
+
+        {tcp, _, Data} ->
+            case parse_input(Data, self()) of
+                quit ->
                     io:format("Recebi quit~n"),
                     statePid ! {leave, Username, self()},
                     logout(Username),
                     authenticator(Sock);
-                _ ->
-                    io:format("RECEBI ESTES DADOS~p~n",[Data]),
-                    GameManager ! {keyPressed, Data, self()},
+                {shoot, Pos, From} ->
+                    GameManager ! {shoot, Pos, From},
+                    cicloJogo(Sock, Username, GameManager);
+                {keyPressed, Dir, From} ->
+                    GameManager ! {keyPressed, Dir, From},
+                    cicloJogo(Sock, Username, GameManager);
+                unknown_command ->
+                    io:format("Comando desconhecido recebido: ~p~n", [Data]),
                     cicloJogo(Sock, Username, GameManager)
             end;
+
         {tcp_closed, _} ->
             statePid ! {leave, Username, self()},
             logout(Username);

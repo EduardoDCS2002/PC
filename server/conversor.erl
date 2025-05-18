@@ -5,16 +5,16 @@ formataTecla( Data ) ->
     Key = re:replace(Data, "(^\\s+)|(\\s+$)", "", [global,{return,list}]),
     Key.
 
+
+
 jogador_para_string(Jogador) ->
-    {{_,{X, Y}, _, Color, _, _, _},U} = Jogador,
+    {{_,{X, Y}, _, Color, _, _, _, _},U} = Jogador,
     Lista = [U,float_to_list(X, [{decimals, 3}]), float_to_list(Y, [{decimals, 3}]),integer_to_list(Color)],
     string:join(Lista, " ").
 
 jogadores_para_string([]) -> "";
 jogadores_para_string([H]) -> jogador_para_string(H) ++ " ";
 jogadores_para_string([H|T]) -> jogador_para_string(H) ++ " " ++  jogadores_para_string(T).
-
-
 modificador_para_string(Modifier) ->
     {{X, Y}, Radius, _, {R,G,B}} = Modifier,
     Lista = [float_to_list(X, [{decimals, 3}]), float_to_list(Y, [{decimals, 3}]),float_to_list(Radius, [{decimals, 3}]),integer_to_list(R),integer_to_list(G),integer_to_list(B)],

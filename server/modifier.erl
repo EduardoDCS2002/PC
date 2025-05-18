@@ -1,23 +1,22 @@
 -module(modifier).
--export([new_modifier/0, maybe_spawn_modifier/1, update_modifiers/1, remove_modifier/2]).
+-export([new_modifier/1, maybe_spawn_modifier/1, update_modifiers/1, remove_modifier/2]).
 
 -define(SPAWN_PROBABILITY, 0.05).  % 5% spawn chance per tick
 -define(MAX_PER_TYPE, 3).
--define(MODIFIER_RADIUS, 20.0).
+-define(MODIFIER_RADIUS, 30.0).
 -define(SCREEN_WIDTH, 1300).       % screen bounds
 -define(SCREEN_HEIGHT, 700).
 
 %%% Hardcoded modifier types (as in original)
 modifier_types() -> [green, orange, blue, red].
 
-%%% Escolhe aleatoriamente um tipo (corrigido para usar length/1)
-random_modifier_type() ->
-    Types = modifier_types(),
-    lists:nth(rand:uniform(length(Types)), Types).
+random_element(List) ->
+    Length = length(List),
+    Index = rand:uniform(Length) - 1,  % uniform(1..N) → adjust to 0-based
+    lists:nth(Index + 1, List).       % lists:nth is 1-based
 
 %%% Cria um novo modificador com tipo, posição, raio e cor
-new_modifier() ->
-    Type = random_modifier_type(),
+new_modifier(Type) ->
     Position = {
         float(rand:uniform(?SCREEN_WIDTH)), 
         float(rand:uniform(?SCREEN_HEIGHT))
@@ -29,10 +28,14 @@ new_modifier() ->
         red    -> {255, 0, 0}
     end,
     {Position, ?MODIFIER_RADIUS, Type, Color}.
-
 %%% Remove um modificador por posição
-remove_modifier(Position, Modifiers) ->
-    lists:filter(fun({Pos, _, _, _}) -> Pos /= Position end, Modifiers).
+remove_modifier(CollidedPositions, Modifiers) ->
+    lists:filter(
+    fun({Pos, _, _, _}) ->
+            not lists:member(Pos, CollidedPositions)
+        end,
+        Modifiers
+    ).
 
 %%% Conta modificadores por tipo
 count_by_type(Modifiers) ->
@@ -42,7 +45,8 @@ count_by_type(Modifiers) ->
 
 %%% Decide se spawna um novo modificador
 maybe_spawn_modifier(CurrentModifiers) ->
-    case rand:uniform() < ?SPAWN_PROBABILITY of
+     Chance = rand:uniform(),    
+    case Chance < ?SPAWN_PROBABILITY andalso Chance > 0 of
         true ->
             TypesCount = count_by_type(CurrentModifiers),
             AvailableTypes = [
@@ -51,7 +55,7 @@ maybe_spawn_modifier(CurrentModifiers) ->
             ],
             case AvailableTypes of
                 [] -> CurrentModifiers;
-                _  -> [new_modifier() | CurrentModifiers]
+                H  -> [new_modifier(random_element(H)) | CurrentModifiers]
             end;
         false ->
             CurrentModifiers
