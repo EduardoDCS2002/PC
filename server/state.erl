@@ -1,6 +1,6 @@
 -module (state).
 -export ([refresh_loop/2,gameManager/1,start_state/0,start_game_loop/0,game_loop/0, update/1,adicionaJogador/2, handle_loss/2,handle_win/2,handle_bordas_collisions/2,handle_bullet_collisions/3,handle_modifier_collisions/3]).
--import(modifier, [new_modifier/0, maybe_spawn_modifier/1, update_modifiers/1, remove_modifier/2]).
+-import(modifier, [new_modifier/1, maybe_spawn_modifier/1, update_modifiers/1, remove_modifier/2]).
 -import(player, [newPlayer/1, update_player_decay/1, update_players_decay/1, 
     update_player_reset/1, update_players_reset/1, update_player_position/2,
     update_player_modifier/2, update_player_score/2 ]).
@@ -398,25 +398,18 @@ handle_win(User,Pid) ->
 
 handle_bordas_collisions(Players, CollisionsBoarders) ->
    % Obter lista de IDs dos jogadores que colidiram com a borda
-    CollidedIds = [Id || {{{Id, _, _, _, _, _, _}, _}, _Projectile} <- CollisionsBoarders],
+    CollidedIds = [Id || {{Id, _, _, _, _, _, _}, _} <- CollisionsBoarders],
 
     case CollidedIds of
         [] ->
-            UpdatedPlayers = Players; % ninguém colidiu, não dá pontos
+            UpdatedPlayers2 = Players; % ninguém colidiu, não dá pontos
         _  ->
             % Atualiza apenas quem não colidiu
             UpdatedPlayers = [maybe_update_score(Player, CollidedIds, 2) || Player <- Players],
-            player:update_players_reset(UpdatedPlayers)
+            UpdatedPlayers2 = player:update_players_reset(UpdatedPlayers)
     end,
-    % Atualizar apenas os jogadores que NÃO colidiram
-    %UpdatedPlayers = [maybe_update_score(Player, CollidedIds, 2) || Player <- Players],
-
-   %UpdatedPlayers2 =
-        %if
-            %CollidedIds =:= [] -> UpdatedPlayers;
-           % true -> player:update_players_reset(UpdatedPlayers)
-        %end,
-    UpdatedPlayers.
+    
+    UpdatedPlayers2.
 
 maybe_update_score(Player, CollidedIds, Points) ->
     {{Id, _, _, _, _, _, _}, _} = Player,
@@ -425,19 +418,12 @@ maybe_update_score(Player, CollidedIds, Points) ->
         false -> player:update_player_score(Player, Points) % atualiza se não colidiu
     end.
 
-%handle_bordas([], Players) ->
- %   Players;
-%handle_bordas(PlayersCollided, AllPlayers) ->
- %   NotChangedPlayers = [Player || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =:= IdP],
-  %  ChangedPlayers = [player:update_player_score(Player, 2) || {{PId, _, _, _, _, _, _}, _} <- PlayersCollided, Player = {{IdP, _, _, _, _, _, _}, _} <- AllPlayers, PId =/= IdP],
-   % player:update_players_position_reset(NotChangedPlayers ++ ChangedPlayers).
-
 handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
     case CollisionsBullets of
         [] -> ok;
         _  -> io:format("Colisões com bala: ~p~n", [CollisionsBullets])
     end,
-    CollidedIds = [Id || {{{Id, _, _, _, _, _, _}, _}, _Projectile} <- CollisionsBullets],
+    CollidedIds = [Id || {{{Id, _, _, _, _, _, _}, _}, Projectile} <- CollisionsBullets],
 
     case CollidedIds of
         [] ->
@@ -452,27 +438,16 @@ handle_bullet_collisions(Players, Bullets, CollisionsBullets) ->
             
     end,
 
-    % Posicoes das bullets colididos
-    %{{PlayerX, PlayerY}, {Vx, Vy}, ?PROJECTILE_RADIUS, T}
-    %CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsBullets],
-
-    % Remover modificadores colididos
-    %NewBullets =
-        %if
-            %CollidedPositions =:= [] -> Bullets;
-            %true -> projectile:remove_bullets(CollidedPositions, Bullets)
-        %end,
-
     {UpdatedPlayers, NewBullets}.
 
-%handle_bullet_collisions([], Players) ->
- %   Players;
-%handle_bullet_collisions([{{{IdP, _, _, _, _, _, _}, _}, _} | Rest], Players) ->
- %   io:format("Collision between bullet ~p and player ~p~n", [IdP, Players]),
-    
-  %  NotChangedPlayers = [Player || Player = {{PId, _, _, _, _, _, _}, _} <- Players, PId =:= IdP],
-   % ChangeScorePlayers = [player:update_player_score(Player, 1) || Player = {{PId, _, _, _, _, _, _}, _} <- Players, PId =/= IdP],
-    %handle_bullet_collisions(Rest, NotChangedPlayers ++ ChangeScorePlayers).
+maybe_update_buffs(Player, CollidedIds) ->
+    {{Id, _, _, _, _, _, _}, _} = Player,
+    case lists:keyfind(Id, 1, CollidedIds) of
+        {Id, Modifier} ->
+            player:update_player_modifier(Player, Modifier); % se colidiu, aplica
+        false ->
+            Player % se não colidiu com nenhum modifier, retorna como está
+    end.
 
 %%Aplicar os efeitos dos modificadores
 handle_modifier_collisions(Players, Modifiers, CollisionsModifiers) ->
@@ -480,40 +455,22 @@ handle_modifier_collisions(Players, Modifiers, CollisionsModifiers) ->
         [] -> ok;
         _  -> io:format("Colisões com modifiers: ~p~n", [CollisionsModifiers])
     end,
-    % Atualizar jogadores que colidiram
-    UpdatedMap = maps:from_list(
-        [{element(1, Player), player:update_player_modifier(Player, Modifier)}
-         || {Player, Modifier} <- CollisionsModifiers]
-    ),
+    CollidedIds = [{Id,Modifier} || {{{Id, _, _, _, _, _, _}, _}, Modifier} <- CollisionsModifiers],
 
-    % Jogadores atualizados + os que não colidiram
-    UpdatedPlayers = [maps:get(element(1, Player), UpdatedMap, Player) || Player <- Players],
-
-    % Posicoes dos modificadores colididos
-    %{Position, ?MODIFIER_RADIUS, Type, Color}
-    CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsModifiers],
-
-    NewModifiers =
-        if
-            CollidedPositions =:= [] -> Modifiers;
-            true -> modifier:remove_modifier(CollidedPositions, Modifiers)
-        end,
-
+    case CollidedIds of
+        [] ->
+            UpdatedPlayers = Players,
+            NewModifiers = Modifiers; % ninguém colidiu, não dá pontos
+        _  ->
+            % Atualiza apenas quem não colidiu
+            UpdatedPlayers = [maybe_update_buffs(Player, CollidedIds) || Player <- Players],
+            CollidedPositions = [Pos || {_, {Pos, _, _, _}} <- CollisionsModifiers],
+            % Remover modificadores colididos
+            NewModifiers = modifier:remove_modifier(CollidedPositions, Modifiers)
+            
+    end,
+    
     {UpdatedPlayers, NewModifiers}.
 
 
 
-%handle_modifier_collisions([]) ->
-   % [];
-%handle_modifier_collisions([{Player, Modifier} | Rest]) ->
-   % io:format("Colisão com um modificador ~p e ~p~n", [Player, Modifier]),
-    %[player:update_player_modifier(Player, Modifier) | handle_modifier_collisions(Rest)].
-
-%%handle_bordas([]) ->
-   %% [];
-%%handle_bordas([Player | Players]) -> % precisa de atualizar o score do Player e devolver o novo valor
-  %%  {_,{U,Pid}} = Player,
-    %%io:format("O jogador ~p bateu na borda.~n",[Player]),
-    %%handle_loss(U,Pid),
-    %%game ! {leave, Pid},
-    %%handle_bordas(Players).
